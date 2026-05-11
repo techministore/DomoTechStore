@@ -1,0 +1,56 @@
+[
+    {
+        "id": 1,
+        "nombre": "Xiaomi Robot Vacuum S10 Pro",
+        "categoria": "limpieza-inteligente",
+        "precio_aproximado": 285.00,
+        "enlace": "https://s.click.aliexpress.com/e/_DE_TU_ENLACE",
+        "destacado": true,
+        "descripcion": "Navegación láser profesional y potencia de succión de 4000Pa. El mejor rendimiento por comisión en limpieza."
+    },
+    {
+        "id": 2,
+        "nombre": "Cerradura Inteligente Aqara U100",
+        "categoria": "seguridad-vigilancia",
+        "precio_aproximado": 165.00,
+        "enlace": "https://s.click.aliexpress.com/e/_DE_TU_ENLACE",
+        "destacado": true,
+        "descripcion": "Compatible con Apple HomeKey y huella dactilar. Producto premium con alta tasa de conversión y reseña 4.9/5."
+    },
+    {
+        "id": 3,
+        "nombre": "Pack 4 Enchufes Meross Matter",
+        "categoria": "enchufes-energia-smart",
+        "precio_aproximado": 55.00,
+        "enlace": "https://s.click.aliexpress.com/e/_DE_TU_ENLACE",
+        "destacado": true,
+        "descripcion": "Tecnología Matter compatible con todo. Los packs aumentan el valor del carrito y tu comisión final."
+    },
+    {
+        "id": 4,
+        "nombre": "Panel LED Nanoleaf Shapes Kit",
+        "categoria": "iluminacion-inteligente",
+        "precio_aproximado": 195.00,
+        "enlace": "https://s.click.aliexpress.com/e/_DE_TU_ENLACE",
+        "destacado": true,
+        "descripcion": "Iluminación decorativa de lujo. Producto de alto rendimiento visual que genera clics impulsivos."
+    },
+    {
+        "id": 5,
+        "nombre": "Hub Domótico Homey Bridge",
+        "categoria": "controladores-asistentes",
+        "precio_aproximado": 69.00,
+        "enlace": "https://s.click.aliexpress.com/e/_DE_TU_ENLACE",
+        "destacado": true,
+        "descripcion": "El cerebro para conectar más de 50.000 dispositivos. Esencial para usuarios que buscan una Smart Home seria."
+    },
+    {
+        "id": 6,
+        "nombre": "Estación Meteorológica WiFi Tuya",
+        "categoria": "sensores-automatizacion",
+        "precio_aproximado": 85.00,
+        "enlace": "https://s.click.aliexpress.com/e/_DE_TU_ENLACE",
+        "destacado": false,
+        "descripcion": "Sensores exteriores e interiores con pantalla a color. Un nicho muy rentable y con poca competencia SEO."
+    }
+]
