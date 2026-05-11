@@ -71,6 +71,10 @@
       </div>
     </header>
 
+    <div class="container">
+        <nav id="breadcrumbs" class="breadcrumbs"></nav>
+    </div>
+
     <main>
 
         <!-- HERO -->
@@ -80,6 +84,32 @@
                 <p>Encuentra los mejores dispositivos para transformar tu casa de forma sencilla y económica.</p>
                 <div class="search-hero">
                     <input type="text" id="search-input" placeholder="¿Qué estás buscando?">
+                </div>
+            </div>
+        </section>
+
+        <!-- OFERTAS DEL DÍA -->
+        <section class="section bg-dark-alt">
+            <div class="container">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 30px;">
+                    <span style="font-size: 2rem;">⚡</span>
+                    <h2 class="section-title" style="margin-bottom: 0;">Ofertas del día</h2>
+                </div>
+                <div id="ofertas-dia" class="grid grid-4">
+                    <!-- Cargado dinámicamente -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TOP VENTAS POR CATEGORÍA -->
+        <section class="section">
+            <div class="container">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 30px;">
+                    <span style="font-size: 2rem;">🏆</span>
+                    <h2 class="section-title" style="margin-bottom: 0;">Top ventas por categoría</h2>
+                </div>
+                <div id="top-ventas-categorias" class="top-sales-grid">
+                    <!-- Cargado dinámicamente -->
                 </div>
             </div>
         </section>

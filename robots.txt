@@ -1,3 +1,4 @@
+# Archivo robots.txt para DomoTechStore - Última actualización: 2026-05-10
 User-agent: *
 Allow: /
-Sitemap: https://domotechstore.netlify.app/sitemap.xml
+Sitemap: https://domotechstore.pages.dev/sitemap.xml
