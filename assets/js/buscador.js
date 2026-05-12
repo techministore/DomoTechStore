@@ -31,8 +31,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. Carga inicial de productos recomendados (según el script base)
-    if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
+    // 3. Automatización por Página
+    const path = window.location.pathname;
+    if (path.includes('smart-home.html')) {
+        mostrarProductos("smart home");
+    } else if (path.includes('camaras.html')) {
+        mostrarProductos("security camera");
+    } else if (path.includes('interruptores.html')) {
+        mostrarProductos("wifi switch");
+    } else if (path.endsWith('index.html') || path === '/') {
         const initialKeywords = ["smart home", "gadgets", "wifi switch", "security camera"];
         const randomKeyword = initialKeywords[Math.floor(Math.random() * initialKeywords.length)];
         mostrarProductos(randomKeyword);
@@ -144,16 +151,18 @@ function renderExternalResults(products, keyword = "") {
 
     grid.innerHTML = products.map(p => `
         <article class="card product-card">
-            <div class="product-image-container" style="height: 200px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
-                <img src="${p.image_url}" alt="${p.title}" style="width: 100%; h-eight: 100%; object-fit: contain;">
+            <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
+            <div class="product-image-container" style="height: 200px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff; position: relative;">
+                <img src="${p.image_url}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
             </div>
             <h3 style="font-size: 1rem; height: 3em; overflow: hidden; margin-bottom: 10px;">${p.title}</h3>
             <div class="price-container">
-                <p style="font-size: 0.9rem; color: var(--muted-text); margin-bottom: 5px;">Precio en AliExpress:</p>
+                <span class="old-price">${(parseFloat(p.sale_price || p.price) * 1.4).toFixed(2)}€</span>
                 <span class="current-price">${p.sale_price || p.price}€</span>
             </div>
+            <p style="font-size: 0.8rem; color: #4ade80; margin: 5px 0; font-weight: bold;">✓ Envío Gratis disponible</p>
             <a href="${p.product_url}&aff_id=${API_CONFIG.tracking_id}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
-                Ver producto →
+                Comprar Ahora →
             </a>
         </article>
     `).join('');
