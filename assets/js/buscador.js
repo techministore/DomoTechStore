@@ -160,7 +160,7 @@ function renderExternalResults(products, keyword = "") {
                     <span class="current-price">${p.sale_price || p.price}€</span>
                 </div>
                 <p style="font-size: 0.8rem; color: #4ade80; margin: 5px 0; font-weight: bold;">✓ Envío Gratis disponible</p>
-                <a href="${formatAffiliateLink(p.product_url, API_CONFIG.tracking_id)}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
+                <a href="${p.promotion_link || formatAffiliateLink(p.product_url, API_CONFIG.tracking_id)}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
                     Comprar Ahora →
                 </a>
             </article>

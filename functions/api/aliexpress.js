@@ -39,19 +39,50 @@ export async function onRequest(context) {
     try {
         const response = await fetch(`${apiEndpoint}?${query}`, {
             method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-            }
+            headers: { 'Accept': 'application/json' }
         });
         
         const data = await response.json();
         
-        // Devolver los resultados con cabeceras de seguridad
+        // 4. GENERACIÓN DE DEEP LINKS (Sistema Oficial)
+        // Si tenemos resultados, convertimos sus URLs en enlaces de afiliado reales
+        if (data.result && data.result.items && data.result.items.length > 0) {
+            const productUrls = data.result.items.map(item => item.product_url).join(',');
+            
+            const deepLinkParams = {
+                app_key: APP_KEY,
+                timestamp: Date.now().toString(),
+                method: 'aliexpress.affiliate.link.generate',
+                v: '2.0',
+                sign_method: 'md5',
+                format: 'json',
+                source_values: productUrls,
+                tracking_id: TRACKING_ID
+            };
+            
+            const deepLinkSign = await generateAliExpressSign(deepLinkParams, APP_SECRET);
+            deepLinkParams.sign = deepLinkSign;
+            
+            const deepLinkQuery = new URLSearchParams(deepLinkParams).toString();
+            const deepLinkRes = await fetch(`https://api.aliexpress.com/affiliate_link_generate?${deepLinkQuery}`);
+            const deepLinkData = await deepLinkRes.json();
+            
+            // Reemplazar las URLs originales por los enlaces de afiliado generados (promotion_link)
+            if (deepLinkData.result && deepLinkData.result.links) {
+                data.result.items = data.result.items.map((item, index) => {
+                    if (deepLinkData.result.links[index]) {
+                        item.promotion_link = deepLinkData.result.links[index].promotion_link;
+                    }
+                    return item;
+                });
+            }
+        }
+        
         return new Response(JSON.stringify(data), {
             headers: { 
                 "Content-Type": "application/json",
                 "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "public, max-age=3600" // Caché de 1 hora para no saturar la API
+                "Cache-Control": "public, max-age=3600"
             }
         });
     } catch (error) {
