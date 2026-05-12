@@ -68,11 +68,11 @@ function filterLocalItems(searchTerm) {
 }
 
 /**
- * Función proporcionada para buscar en AliExpress (Ahora vía Backend Proxy)
+ * Función proporcionada para buscar en AliExpress (Ahora vía Backend Proxy en Cloudflare Workers)
  */
 async function buscarProductos(keyword) {
-    // LLAMADA AL BACKEND PROXY (Seguro y sin CORS)
-    const endpoint = "/api/aliexpress";
+    // URL OFICIAL DE TU CLOUDFLARE WORKER
+    const endpoint = "https://sparkling-cake-503e.techministore.workers.dev/api/aliexpress";
     
     try {
         const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}`;
@@ -82,7 +82,7 @@ async function buscarProductos(keyword) {
         // La API de AliExpress devuelve los items dentro de data.result.items
         return (data.result && data.result.items) || [];
     } catch (error) {
-        console.error("Error en AliExpress Proxy:", error);
+        console.error("Error en AliExpress Worker:", error);
         return [];
     }
 }
