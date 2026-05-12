@@ -123,17 +123,47 @@ function fixLinks(basePath) {
 }
 
 /**
- * Carga productos destacados desde el JSON
+ * Carga productos destacados desde el JSON (Optimizado con AliExpress API)
  */
 function loadFeatured(basePath) {
+    // Primero intentamos cargar desde el JSON local (con fotos)
     renderProductGrid('productos-destacados', `${basePath}data/productos.json`, p => p.destacado, 4);
 }
 
 /**
- * Carga Ofertas del Día
+ * Carga Ofertas del Día (Optimizado con AliExpress API)
  */
 function loadDailyOffers(basePath) {
-    renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
+    // Si queremos que las ofertas sean 100% dinámicas de la API:
+    const initialKeywords = ["smart home", "gadgets", "wifi switch", "security camera"];
+    const randomKeyword = initialKeywords[Math.floor(Math.random() * initialKeywords.length)];
+    
+    // Si existe la función de búsqueda de la API, la usamos para las ofertas
+    if (typeof buscarProductos === 'function') {
+        buscarProductos(randomKeyword).then(products => {
+            const container = document.getElementById('ofertas-dia');
+            if (container && products.length > 0) {
+                container.innerHTML = products.slice(0, 4).map(p => `
+                    <article class="card product-card">
+                        <div class="urgency-badge">🔥 OFERTA FLASH</div>
+                        <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
+                            <img src="${p.image_url}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
+                        </div>
+                        <h3 style="font-size: 1rem; height: 3em; overflow: hidden; margin-bottom: 10px;">${p.title}</h3>
+                        <div class="price-container">
+                            <span class="old-price">${(parseFloat(p.sale_price || p.price) * 1.3).toFixed(2)}€</span>
+                            <span class="current-price">${p.sale_price || p.price}€</span>
+                        </div>
+                        <a href="${p.product_url}&aff_id=domotech2026" class="btn-aliexpress" target="_blank">¡Comprar ya! →</a>
+                    </article>
+                `).join('');
+            } else {
+                renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
+            }
+        });
+    } else {
+        renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
+    }
 }
 
 /**
@@ -157,9 +187,12 @@ function loadTopSales(basePath) {
             return `
                 <div class="top-sales-item">
                     <div class="cat-tag">${cat.nombre}</div>
+                    <div class="product-image-mini" style="height: 100px; overflow: hidden; margin-bottom: 10px; background: #fff; border-radius: 8px;">
+                        <img src="${topProduct.imagen || topProduct.image_url || 'assets/img/placeholder-tech.jpg'}" alt="${topProduct.nombre}" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
                     <h4>${topProduct.nombre}</h4>
                     <div class="sales-badge">🔥 +${topProduct.ventas} vendidos</div>
-                    <a href="${topProduct.enlace}" class="btn-link" target="_blank">Ver oferta →</a>
+                    <a href="${topProduct.enlace}${topProduct.enlace.includes('?') ? '&' : '?'}aff_id=domotech2026" class="btn-link" target="_blank">Ver oferta →</a>
                 </div>
             `;
         }).join('');
@@ -238,9 +271,11 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
                 return `
                     <article class="card product-card" itemscope itemtype="https://schema.org/Product">
                         ${showDiscount && discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
-                        <div class="cat-icon" style="font-size:2rem">📦</div>
-                        <h3 itemprop="name">${p.nombre}</h3>
-                        <p class="product-desc" itemprop="description">${p.descripcion}</p>
+                        <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
+                            <img src="${p.imagen || p.image_url || 'assets/img/placeholder-tech.jpg'}" alt="${p.nombre}" style="width: 100%; height: 100%; object-fit: contain;">
+                        </div>
+                        <h3 itemprop="name" style="font-size: 1.1rem; height: 2.5em; overflow: hidden;">${p.nombre}</h3>
+                        <p class="product-desc" itemprop="description" style="font-size: 0.85rem; height: 3em; overflow: hidden; color: var(--muted-text);">${p.descripcion}</p>
                         <div class="price-container" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
                             <meta itemprop="priceCurrency" content="EUR">
                             <meta itemprop="price" content="${p.precio_aproximado}">
@@ -248,7 +283,7 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
                             ${p.precio_original > p.precio_aproximado ? `<span class="old-price">${p.precio_original}€</span>` : ''}
                             <span class="current-price">~${p.precio_aproximado}€</span>
                         </div>
-                        <a href="${p.enlace}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" itemprop="url">Ver en ${p.tienda || 'Tienda'} →</a>
+                        <a href="${p.enlace}${p.enlace.includes('?') ? '&' : '?'}aff_id=domotech2026" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" itemprop="url">Ver en AliExpress →</a>
                     </article>
                 `;
             }).join('');
