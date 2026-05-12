@@ -154,7 +154,7 @@ function loadDailyOffers(basePath) {
                             <span class="old-price">${(parseFloat(p.sale_price || p.price) * 1.3).toFixed(2)}€</span>
                             <span class="current-price">${p.sale_price || p.price}€</span>
                         </div>
-                        <a href="${p.product_url}&aff_id=domotech2026" class="btn-aliexpress" target="_blank">¡Comprar ya! →</a>
+                        <a href="${formatAffiliateLink(p.product_url, 'domotech2026')}" class="btn-aliexpress" target="_blank">¡Comprar ya! →</a>
                     </article>
                 `).join('');
             } else {
@@ -234,7 +234,7 @@ function loadDynamicComparison(basePath) {
                                     <td><strong>${p.nombre}</strong></td>
                                     <td>~${p.precio_aproximado}€</td>
                                     <td>⭐ ${p.valoracion}/5</td>
-                                    <td><a href="${p.enlace}${p.enlace.includes('?') ? '&' : '?'}aff_id=domotech2026" class="btn-aliexpress" style="padding: 8px 15px; font-size: 0.8rem; margin: 0;" target="_blank">Comprar →</a></td>
+                                    <td><a href="${formatAffiliateLink(p.enlace, 'domotech2026')}" class="btn-aliexpress" style="padding: 8px 15px; font-size: 0.8rem; margin: 0;" target="_blank">Comprar →</a></td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -243,6 +243,15 @@ function loadDynamicComparison(basePath) {
             `;
             container.innerHTML = tableHtml;
         });
+}
+
+/**
+ * Asegura que el enlace de afiliado esté bien formateado
+ */
+function formatAffiliateLink(url, trackingId) {
+    if (!url) return "#";
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}aff_id=${trackingId}`;
 }
 
 /**
@@ -283,7 +292,7 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
                             ${p.precio_original > p.precio_aproximado ? `<span class="old-price">${p.precio_original}€</span>` : ''}
                             <span class="current-price">~${p.precio_aproximado}€</span>
                         </div>
-                        <a href="${p.enlace}${p.enlace.includes('?') ? '&' : '?'}aff_id=domotech2026" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" itemprop="url">Ver en AliExpress →</a>
+                        <a href="${formatAffiliateLink(p.enlace, 'domotech2026')}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" itemprop="url">Ver en AliExpress →</a>
                     </article>
                 `;
             }).join('');

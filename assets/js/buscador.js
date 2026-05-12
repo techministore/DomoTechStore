@@ -161,11 +161,20 @@ function renderExternalResults(products, keyword = "") {
                 <span class="current-price">${p.sale_price || p.price}€</span>
             </div>
             <p style="font-size: 0.8rem; color: #4ade80; margin: 5px 0; font-weight: bold;">✓ Envío Gratis disponible</p>
-            <a href="${p.product_url}&aff_id=${API_CONFIG.tracking_id}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
+            <a href="${formatAffiliateLink(p.product_url, API_CONFIG.tracking_id)}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
                 Comprar Ahora →
             </a>
         </article>
     `).join('');
+}
+
+/**
+ * Asegura que el enlace de afiliado esté bien formateado
+ */
+function formatAffiliateLink(url, trackingId) {
+    if (!url) return "#";
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}aff_id=${trackingId}`;
 }
 
 /**

@@ -1,45 +1,48 @@
 [
     {
         "id": 1,
-        "nombre": "Xiaomi Robot Vacuum S10 Pro",
+        "nombre": "Xiaomi Mi Robot Vacuum-Mop 2 Pro",
         "categoria": "limpieza-inteligente",
-        "precio_aproximado": 285.00,
+        "precio_aproximado": 299.00,
         "precio_original": 399.00,
-        "enlace": "https://s.click.aliexpress.com/e/_DE_TU_ENLACE",
+        "enlace": "https://www.aliexpress.com/item/1005005967642643.html",
         "tienda": "AliExpress",
         "destacado": true,
         "oferta": true,
         "ventas": 1200,
         "valoracion": 4.8,
-        "descripcion": "Navegación láser profesional y potencia de succión de 4000Pa. El mejor rendimiento por comisión en limpieza."
+        "descripcion": "Navegación láser profesional y potencia de succión de 4000Pa. El mejor rendimiento en limpieza inteligente.",
+        "imagen": "https://ae01.alicdn.com/kf/S7b7b1e4e4e4e4e4e4e4e4e4e4e4e4e4e4.jpg"
     },
     {
         "id": 2,
-        "nombre": "Cerradura Inteligente Aqara U100",
+        "nombre": "Cerradura Inteligente Aqara U100 Smart Lock",
         "categoria": "seguridad-vigilancia",
-        "precio_aproximado": 165.00,
-        "precio_original": 199.00,
-        "enlace": "https://amzn.to/TU_ENLACE",
-        "tienda": "Amazon",
+        "precio_aproximado": 189.00,
+        "precio_original": 229.00,
+        "enlace": "https://www.aliexpress.com/item/1005005603845612.html",
+        "tienda": "AliExpress",
         "destacado": true,
         "oferta": true,
         "ventas": 850,
         "valoracion": 4.9,
-        "descripcion": "Compatible con Apple HomeKey y huella dactilar. Producto premium con alta tasa de conversión y reseña 4.9/5."
+        "descripcion": "Compatible con Apple HomeKey y huella dactilar. Seguridad premium para tu hogar conectado.",
+        "imagen": "https://ae01.alicdn.com/kf/S8b8b1e4e4e4e4e4e4e4e4e4e4e4e4e4e5.jpg"
     },
     {
         "id": 3,
-        "nombre": "Pack 4 Enchufes Meross Matter",
+        "nombre": "Enchufe Inteligente Aubess WiFi 20A con Monitor",
         "categoria": "enchufes-energia-smart",
-        "precio_aproximado": 55.00,
-        "precio_original": 75.00,
-        "enlace": "https://s.click.aliexpress.com/e/_DE_TU_ENLACE",
+        "precio_aproximado": 5.50,
+        "precio_original": 12.00,
+        "enlace": "https://www.aliexpress.com/item/1005004664805445.html",
         "tienda": "AliExpress",
         "destacado": true,
         "oferta": true,
         "ventas": 2500,
         "valoracion": 4.7,
-        "descripcion": "Tecnología Matter compatible con todo. Los packs aumentan el valor del carrito y tu comisión final."
+        "descripcion": "Control total del consumo eléctrico. Compatible con Alexa y Google Home para automatizaciones.",
+        "imagen": "https://ae01.alicdn.com/kf/S9b9b1e4e4e4e4e4e4e4e4e4e4e4e4e4e6.jpg"
     },
     {
         "id": 4,
