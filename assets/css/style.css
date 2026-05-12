@@ -13,6 +13,7 @@
     --border: rgba(255, 255, 255, 0.1);
     --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --header-height: 80px;
 }
 
 html { scroll-behavior: smooth; }
@@ -26,6 +27,7 @@ body {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+    padding-top: var(--header-height); /* Espacio para el header fixed */
 }
 
 .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
@@ -35,34 +37,48 @@ ul { list-style: none; }
 /* ===========================
    HEADER (ARREGLADO)
 =========================== */
-.site-header {
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(8px);
+.site-header, .main-header {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
-    padding: 10px 0;
-    position: relative; /* YA NO ES STICKY */
+    padding: 0;
+    height: var(--header-height);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
     z-index: 1000;
-}
-
-.header-container {
     display: flex;
-    justify-content: center;
     align-items: center;
 }
 
-/* LOGO GRANDE */
-.logo img {
-    width: 600px;
-    height: auto;
-    display: block;
+.header-container, .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
     margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* LOGO */
+.logo img {
+    max-height: 50px;
+    width: auto;
+    display: block;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
 }
 
 /* ===========================
    HERO (ARREGLADO)
 =========================== */
 .hero {
-    margin-top: 40px; /* SEPARA DEL HEADER */
+    margin-top: 0; /* Ya no hace falta margin-top con padding-top en body */
     background: radial-gradient(circle at top, #1e3a8a 0%, #0f172a 80%);
     padding: 100px 0;
     text-align: center;
