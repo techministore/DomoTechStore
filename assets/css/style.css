@@ -309,9 +309,7 @@ ul { list-style: none; }
 
 /* BREADCRUMBS */
 .breadcrumbs {
-    padding: 15px 0;
-    font-size: 0.85rem;
-    color: var(--muted-text);
+    display: none;
 }
 
 .breadcrumbs a {
