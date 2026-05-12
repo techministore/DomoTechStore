@@ -4,9 +4,7 @@
 */
 
 const API_CONFIG = {
-    app_key: "534120",
-    app_secret: "iyAwX4NpupyrVHI36esNEys1nvLG0Aig",
-    tracking_id: "domotech2026" // Tracking ID por defecto
+    tracking_id: "domotech2026"
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -70,30 +68,21 @@ function filterLocalItems(searchTerm) {
 }
 
 /**
- * Función proporcionada para buscar en AliExpress
+ * Función proporcionada para buscar en AliExpress (Ahora vía Backend Proxy)
  */
 async function buscarProductos(keyword) {
-    const endpoint = "https://api.aliexpress.com/item_search";
-    
-    // Parámetros base del script
-    const params = {
-        app_key: API_CONFIG.app_key,
-        timestamp: Date.now(),
-        keywords: keyword,
-        fields: "item_id,title,price,image_url,sale_price,product_url",
-        tracking_id: API_CONFIG.tracking_id
-    };
+    // LLAMADA AL BACKEND PROXY (Seguro y sin CORS)
+    const endpoint = "/api/aliexpress";
     
     try {
-        const query = new URLSearchParams(params).toString();
-        const url = `${endpoint}?${query}`;
-        
+        const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}`;
         const res = await fetch(url);
         const data = await res.json();
         
-        return data.result.items || [];
+        // La API de AliExpress devuelve los items dentro de data.result.items
+        return (data.result && data.result.items) || [];
     } catch (error) {
-        console.error("Error en AliExpress API:", error);
+        console.error("Error en AliExpress Proxy:", error);
         return [];
     }
 }
@@ -110,43 +99,49 @@ async function mostrarProductos(keyword) {
  * Renderiza los productos obtenidos de la API
  */
 function renderExternalResults(products, keyword = "") {
+    // Intentar encontrar el contenedor estándar "productos"
+    let grid = document.getElementById('productos');
     let externalSection = document.getElementById('external-results-section');
     const searchInput = document.getElementById('search-input');
     const container = document.querySelector('main .container') || document.body;
 
-    if (!externalSection) {
-        externalSection = document.createElement('div');
-        externalSection.id = 'external-results-section';
-        externalSection.className = 'container'; // Asegurar que use el contenedor del sitio
-        externalSection.innerHTML = `
-            <div style="margin-top: 50px; border-top: 1px solid var(--border); padding-top: 30px; margin-bottom: 50px;">
-                <h2 class="section-title" id="external-title" style="font-size: 1.5rem; text-align: left;">Ofertas destacadas en AliExpress</h2>
-                <div id="external-grid" class="grid grid-4"></div>
-            </div>
-        `;
-        
-        // Insertar antes del footer o al final del main
-        const main = document.querySelector('main');
-        if (main) {
-            main.appendChild(externalSection);
-        } else {
-            container.appendChild(externalSection);
+    // Si no existe el contenedor "productos", creamos la sección dinámica (para el buscador en Home)
+    if (!grid) {
+        if (!externalSection) {
+            externalSection = document.createElement('div');
+            externalSection.id = 'external-results-section';
+            externalSection.className = 'container';
+            externalSection.innerHTML = `
+                <div style="margin-top: 50px; border-top: 1px solid var(--border); padding-top: 30px; margin-bottom: 50px;">
+                    <h2 class="section-title" id="external-title" style="font-size: 1.5rem; text-align: left;">Ofertas destacadas en AliExpress</h2>
+                    <div id="external-grid" class="grid grid-4"></div>
+                </div>
+            `;
+            
+            const main = document.querySelector('main');
+            if (main) main.appendChild(externalSection);
+            else container.appendChild(externalSection);
         }
+        grid = document.getElementById('external-grid');
     }
 
-    const grid = document.getElementById('external-grid');
     const title = document.getElementById('external-title');
-
-    // Actualizar título según contexto
-    if (keyword && keyword !== "smart home") {
-        title.textContent = `Resultados de "${keyword}" en AliExpress`;
-    } else {
-        title.textContent = `Recomendaciones Smart Home de AliExpress`;
+    if (title) {
+        if (keyword && keyword !== "smart home") {
+            title.textContent = `Resultados de "${keyword}" en AliExpress`;
+        } else {
+            title.textContent = `Recomendaciones Smart Home de AliExpress`;
+        }
     }
     
     if (products.length === 0) {
         grid.innerHTML = '<p style="grid-column: 1/-1; opacity: 0.5;">No se encontraron ofertas externas en este momento.</p>';
         return;
+    }
+
+    // Si el grid no tiene la clase grid-4, se la añadimos
+    if (!grid.classList.contains('grid')) {
+        grid.className = 'grid grid-4';
     }
 
     grid.innerHTML = products.map(p => `
