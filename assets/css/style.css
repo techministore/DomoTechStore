@@ -324,6 +324,36 @@ ul { list-style: none; }
     opacity: 0.5;
 }
 
+/* Botones y Enlaces */
+.btn-aliexpress {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #ff4747; /* Color AliExpress */
+    color: white;
+    text-align: center;
+    border-radius: 12px;
+    font-weight: 700;
+    margin-top: 15px;
+    transition: var(--transition);
+}
+
+.btn-aliexpress:hover {
+    background: #e63939;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 71, 71, 0.3);
+}
+
+.price-container {
+    margin-top: 10px;
+}
+
+.current-price {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--light-text);
+}
+
 /* ===========================
    RESPONSIVE
 =========================== */
