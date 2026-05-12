@@ -201,7 +201,7 @@ function loadDynamicComparison(basePath) {
                                     <td><strong>${p.nombre}</strong></td>
                                     <td>~${p.precio_aproximado}€</td>
                                     <td>⭐ ${p.valoracion}/5</td>
-                                    <td><a href="${p.enlace}" class="btn-aliexpress btn-sm" target="_blank">Ver más</a></td>
+                                    <td><a href="${p.enlace}${p.enlace.includes('?') ? '&' : '?'}aff_id=domotech2026" class="btn-aliexpress" style="padding: 8px 15px; font-size: 0.8rem; margin: 0;" target="_blank">Comprar →</a></td>
                                 </tr>
                             `).join('')}
                         </tbody>
