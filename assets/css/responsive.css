@@ -1,0 +1,108 @@
+/* 
+    DomoTechStore - Diseño Responsive
+    Ajustes para diferentes tamaños de pantalla
+*/
+
+/* --- DISPOSITIVOS MÓVILES (Smartphone) --- */
+@media (max-width: 768px) {
+    /* Tipografía */
+    .hero h1 {
+        font-size: 2.2rem;
+    }
+    
+    .section-title {
+        font-size: 1.8rem;
+    }
+
+    /* Layout */
+    .grid-2, .grid-3, .grid-4 {
+        grid-template-columns: 1fr; /* Una sola columna en móvil */
+    }
+
+    .container {
+        padding: 0 15px;
+    }
+
+    /* Menú de Navegación Móvil */
+    .menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        font-size: 1.8rem;
+        cursor: pointer;
+        color: var(--dark);
+    }
+
+    .nav-list {
+        display: none; /* Oculto por defecto */
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: var(--white);
+        padding: 20px;
+        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        border-top: 1px solid var(--border);
+        gap: 15px;
+    }
+
+    .nav-list.active {
+        display: flex; /* Se muestra al hacer click en el toggle */
+    }
+
+    /* Hero */
+    .hero {
+        padding: 60px 0;
+    }
+
+    /* Footer */
+    .main-footer .grid-3 {
+        text-align: center;
+        gap: 40px;
+    }
+
+    /* Tablas */
+    .table-simple {
+        display: block;
+        overflow-x: auto; /* Scroll horizontal si la tabla es ancha */
+    }
+}
+
+/* --- TABLETS (769px a 1024px) --- */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .grid-3 {
+        grid-template-columns: repeat(2, 1fr); /* 2 columnas en tablets */
+    }
+
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .hero h1 {
+        font-size: 2.8rem;
+    }
+}
+
+/* --- ESCRITORIO (Más de 1024px) --- */
+@media (min-width: 1025px) {
+    .menu-toggle {
+        display: none; /* Ocultar botón de menú en escritorio */
+    }
+    
+    .nav-list {
+        display: flex !important; /* Siempre visible */
+    }
+}
+
+/* Ajustes para pantallas muy pequeñas */
+@media (max-width: 480px) {
+    .hero h1 {
+        font-size: 1.8rem;
+    }
+    
+    .btn {
+        width: 100%; /* Botones de ancho completo */
+        margin-bottom: 10px;
+    }
+}

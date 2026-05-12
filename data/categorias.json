@@ -1,0 +1,38 @@
+[
+    {
+        "id": 1,
+        "nombre": "Iluminación Inteligente",
+        "slug": "iluminacion-inteligente",
+        "descripcion_corta": "Bombillas, tiras LED y lámparas conectadas para crear el ambiente perfecto."
+    },
+    {
+        "id": 2,
+        "nombre": "Seguridad y Vigilancia",
+        "slug": "seguridad-vigilancia",
+        "descripcion_corta": "Protege tu hogar con cámaras, alarmas y cerraduras inteligentes de última generación."
+    },
+    {
+        "id": 3,
+        "nombre": "Enchufes y Energía Smart",
+        "slug": "enchufes-energia-smart",
+        "descripcion_corta": "Controla el encendido de tus electrodomésticos y ahorra en tu factura eléctrica."
+    },
+    {
+        "id": 4,
+        "nombre": "Sensores y Automatización",
+        "slug": "sensores-automatizacion",
+        "descripcion_corta": "Haz que tu casa reaccione a tus movimientos y necesidades de forma automática."
+    },
+    {
+        "id": 5,
+        "nombre": "Limpieza Inteligente",
+        "slug": "limpieza-inteligente",
+        "descripcion_corta": "Robots aspiradores y gadgets que mantienen tu hogar impecable sin esfuerzo."
+    },
+    {
+        "id": 6,
+        "nombre": "Controladores y Asistentes",
+        "slug": "controladores-asistentes",
+        "descripcion_corta": "El cerebro de tu Smart Home: gestiona todo mediante la voz o pantallas táctiles."
+    }
+]
