@@ -144,23 +144,28 @@ function renderExternalResults(products, keyword = "") {
         grid.className = 'grid grid-4';
     }
 
-    grid.innerHTML = products.map(p => `
-        <article class="card product-card">
-            <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
-            <div class="product-image-container" style="height: 200px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff; position: relative;">
-                <img src="${p.image_url}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
-            </div>
-            <h3 style="font-size: 1rem; height: 3em; overflow: hidden; margin-bottom: 10px;">${p.title}</h3>
-            <div class="price-container">
-                <span class="old-price">${(parseFloat(p.sale_price || p.price) * 1.4).toFixed(2)}€</span>
-                <span class="current-price">${p.sale_price || p.price}€</span>
-            </div>
-            <p style="font-size: 0.8rem; color: #4ade80; margin: 5px 0; font-weight: bold;">✓ Envío Gratis disponible</p>
-            <a href="${formatAffiliateLink(p.product_url, API_CONFIG.tracking_id)}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
-                Comprar Ahora →
-            </a>
-        </article>
-    `).join('');
+    grid.innerHTML = products.map(p => {
+        // Soporte para múltiples formatos de imagen de la API
+        const imageUrl = p.image_url || p.product_main_image_url || p.image || 'assets/img/placeholder-tech.jpg';
+        
+        return `
+            <article class="card product-card">
+                <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
+                <div class="product-image-container" style="height: 200px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff; position: relative;">
+                    <img src="${imageUrl}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+                <h3 style="font-size: 1rem; height: 3em; overflow: hidden; margin-bottom: 10px;">${p.title}</h3>
+                <div class="price-container">
+                    <span class="old-price">${(parseFloat(p.sale_price || p.price) * 1.4).toFixed(2)}€</span>
+                    <span class="current-price">${p.sale_price || p.price}€</span>
+                </div>
+                <p style="font-size: 0.8rem; color: #4ade80; margin: 5px 0; font-weight: bold;">✓ Envío Gratis disponible</p>
+                <a href="${formatAffiliateLink(p.product_url, API_CONFIG.tracking_id)}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
+                    Comprar Ahora →
+                </a>
+            </article>
+        `;
+    }).join('');
 }
 
 /**
