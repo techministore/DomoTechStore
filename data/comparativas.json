@@ -1,0 +1,78 @@
+[
+    {
+        "id": 1,
+        "titulo": "Mejores Enchufes Inteligentes 2026",
+        "slug": "mejores-enchufes-inteligentes",
+        "categoria": "enchufes-energia-smart",
+        "descripcion_seo": "Análisis y comparativa de los enchufes smart con mejor relación calidad-precio y monitorización de energía.",
+        "puntos_clave": [
+            "Compatibilidad con Matter y Zigbee",
+            "Monitorización de consumo en tiempo real",
+            "Capacidad de carga hasta 16A",
+            "Facilidad de integración con Alexa y Google Home"
+        ],
+        "productos_ids": [3, 7, 8],
+        "recomendacion_expert": {
+            "producto_id": 3,
+            "motivo": "El pack de Meross ofrece la mejor integración con Matter por un precio imbatible."
+        },
+        "ultima_actualizacion": "2026-05-12"
+    },
+    {
+        "id": 2,
+        "titulo": "Bombillas RGB Compatibles con Alexa",
+        "slug": "bombillas-rgb-alexa",
+        "categoria": "iluminacion-inteligente",
+        "descripcion_seo": "Guía definitiva para iluminar tu hogar con bombillas inteligentes económicas y potentes.",
+        "puntos_clave": [
+            "Intensidad lumínica (Lúmenes)",
+            "Gama de colores RGB + CCT",
+            "Estabilidad de la conexión WiFi",
+            "Sincronización con música"
+        ],
+        "productos_ids": [4, 7],
+        "recomendacion_expert": {
+            "producto_id": 4,
+            "motivo": "Los paneles Nanoleaf son la referencia en iluminación decorativa de alto nivel."
+        },
+        "ultima_actualizacion": "2026-05-12"
+    },
+    {
+        "id": 3,
+        "titulo": "Cámaras WiFi Económicas para Seguridad",
+        "slug": "camaras-wifi-economicas",
+        "categoria": "seguridad-vigilancia",
+        "descripcion_seo": "Protege tu casa sin cuotas mensuales con las mejores cámaras inteligentes de 2026.",
+        "puntos_clave": [
+            "Resolución 2K o superior",
+            "Visión nocturna en color",
+            "Almacenamiento local (SD) vs Nube",
+            "Detección de humanos por IA"
+        ],
+        "productos_ids": [2],
+        "recomendacion_expert": {
+            "producto_id": 2,
+            "motivo": "La cerradura Aqara combinada con cámaras del mismo ecosistema ofrece la mejor seguridad integral."
+        },
+        "ultima_actualizacion": "2026-05-12"
+    },
+    {
+        "id": 4,
+        "titulo": "Kit Domótica por menos de 50€",
+        "slug": "domotica-por-50-euros",
+        "categoria": "kits-inicio",
+        "descripcion_seo": "Cómo empezar tu Smart Home hoy mismo con un presupuesto mínimo y máximo rendimiento.",
+        "puntos_clave": [
+            "Sensores esenciales",
+            "Enchufes de alta rotación",
+            "Configuración sin Hub",
+            "Ahorro energético inmediato"
+        ],
+        "productos_ids": [7, 8],
+        "recomendacion_expert": {
+            "producto_id": 7,
+            "motivo": "La bombilla Tapo es el punto de entrada más fiable y económico del mercado."
+        },
+        "ultima_actualizacion": "2026-05-12"
+    }
+]

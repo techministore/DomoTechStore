@@ -35,7 +35,7 @@ function renderAutosuficiente(products, container) {
                     </div>
                     <span class="product-card__shipping">ENVÍO GRATIS</span>
                 </div>
-                <a href="${p.enlace}" class="btn-aliexpress product-card__button" target="_blank" rel="nofollow sponsored">VER CHOLLO EN ALIEXPRESS</a>
+                <a href="${p.enlace}" class="btn-aliexpress product-card__button" target="_blank" rel="nofollow sponsored">VER EN ${p.tienda ? p.tienda.toUpperCase() : 'TIENDA'}</a>
             </article>`;
     }).join('');
 }

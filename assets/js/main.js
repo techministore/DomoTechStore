@@ -248,7 +248,7 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
                             ${p.precio_original > p.precio_aproximado ? `<span class="old-price">${p.precio_original}€</span>` : ''}
                             <span class="current-price">~${p.precio_aproximado}€</span>
                         </div>
-                        <a href="${p.enlace}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" itemprop="url">Ver en AliExpress →</a>
+                        <a href="${p.enlace}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" itemprop="url">Ver en ${p.tienda || 'Tienda'} →</a>
                     </article>
                 `;
             }).join('');
