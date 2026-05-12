@@ -35,27 +35,113 @@ ul { list-style: none; }
 /* ===========================
    HEADER (ARREGLADO)
 =========================== */
-.site-header {
+.main-header {
     background: rgba(15, 23, 42, 0.85);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--border);
-    padding: 10px 0;
-    position: relative; /* YA NO ES STICKY */
+    padding: 15px 0;
+    position: sticky;
+    top: 0;
     z-index: 1000;
 }
 
-.header-container {
+.header-content {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
+    gap: 20px;
 }
 
-/* LOGO GRANDE */
+/* LOGO */
 .logo img {
-    width: 600px;
+    width: 280px;
     height: auto;
     display: block;
-    margin: 0 auto;
+}
+
+/* MENÚ TOGGLE (BARRAS) */
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--light-text);
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* NAVEGACIÓN DESKTOP */
+.nav-list {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.nav-list a {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--light-text);
+    opacity: 0.9;
+}
+
+.nav-list a:hover {
+    color: var(--primary);
+    opacity: 1;
+}
+
+/* Botón Inicio Optimizado */
+.nav-btn-primary {
+    background: var(--primary);
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 12px;
+    transition: var(--transition);
+    opacity: 1 !important;
+}
+
+.nav-btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Dropdowns */
+.has-dropdown {
+    position: relative;
+}
+
+.dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--dark-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-width: 220px;
+    padding: 15px 0;
+    display: none;
+    box-shadow: var(--shadow);
+    z-index: 100;
+}
+
+.has-dropdown:hover .dropdown {
+    display: block;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.dropdown li a {
+    padding: 10px 20px;
+    display: block;
+    font-size: 0.9rem;
+}
+
+.dropdown li a:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* ===========================
@@ -246,5 +332,5 @@ ul { list-style: none; }
     .hero { padding: 80px 0; margin-top: 20px; }
     .hero-brand { font-size: 2.8rem; }
     .section-title { font-size: 1.8rem; }
-    .logo img { width: 220px; }
+    .logo img { width: 180px; }
 }
