@@ -73,17 +73,3 @@ export async function onRequest(context) {
         });
     }
 }
-
-async function generateAliExpressSign(params, secret) {
-    const sortedKeys = Object.keys(params).sort();
-    let signStr = secret;
-    for (const key of sortedKeys) {
-        signStr += key + params[key];
-    }
-    signStr += secret;
-
-    const msgUint8 = new TextEncoder().encode(signStr);
-    const hashBuffer = await crypto.subtle.digest('MD5', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-}

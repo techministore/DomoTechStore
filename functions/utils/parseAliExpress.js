@@ -6,7 +6,10 @@ export function parseAliExpressItem(item) {
         id: item.item_id,
         title: item.title,
         price: item.sale_price || item.price,
-        image: item.image_url || item.product_main_image_url || item.image,
+        image: item.image_url 
+            || item.product_main_image_url 
+            || item.image 
+            || item.product_small_image_urls?.[0],
         link: item.promotion_link || item.product_url,
         shop: "AliExpress"
     };
