@@ -51,7 +51,8 @@ function appendApiProducts(products) {
         </div>
     ` + products.map(p => {
         return `
-            <article class="card product-card">
+            <article class="card product-card" style="position: relative;">
+                ${p.tag ? `<div class="badge" style="background: var(--primary); position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                 <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
                 <div class="product-image-container">
                     <img src="${p.image}" alt="${p.title}">
@@ -61,6 +62,7 @@ function appendApiProducts(products) {
                     <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
                     <span class="current-price">${p.price}€</span>
                 </div>
+                ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
                 <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">COMPRAR AHORA</a>
             </article>
         `;

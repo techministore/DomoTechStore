@@ -143,7 +143,8 @@ async function loadDailyOffers(basePath) {
         const products = await buscarProductos(keyword);
         if (products && products.length > 0) {
             container.innerHTML = products.slice(0, 4).map(p => `
-                <article class="card product-card">
+                <article class="card product-card" style="position: relative;">
+                    ${p.tag ? `<div class="badge" style="background: var(--primary); position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                     <div class="urgency-badge">⚡ ¡SUPER OFERTA!</div>
                     <div class="product-image-container">
                         <img src="${p.image}" alt="${p.title}">
@@ -153,6 +154,7 @@ async function loadDailyOffers(basePath) {
                         <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
                         <span class="current-price">${p.price}€</span>
                     </div>
+                    ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
                     <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Comprar Ahora →</a>
                 </article>
             `).join('');
@@ -180,7 +182,8 @@ async function loadFeatured(basePath) {
         const products = await buscarProductos(`best ${randomCategory.keyword}`);
         if (products && products.length > 0) {
             container.innerHTML = products.slice(0, 4).map(p => `
-                <article class="card product-card">
+                <article class="card product-card" style="position: relative;">
+                    ${p.tag ? `<div class="badge" style="background: var(--primary); position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                     <div class="product-image-container">
                         <img src="${p.image}" alt="${p.title}">
                     </div>
@@ -188,6 +191,7 @@ async function loadFeatured(basePath) {
                     <div class="price-container">
                         <span class="current-price">${p.price}€</span>
                     </div>
+                    ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
                     <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Ver Detalles →</a>
                 </article>
             `).join('');
@@ -325,7 +329,7 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
             container.innerHTML = products.map(p => {
                 const discount = p.old_price ? Math.round(((p.old_price - p.price) / p.old_price) * 100) : 0;
                 return `
-                    <article class="card product-card" itemscope itemtype="https://schema.org/Product">
+                    <article class="card product-card" itemscope itemtype="https://schema.org/Product" style="position: relative;">
                         ${showDiscount && discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
                         <div class="product-image-container">
                             <img src="${p.image}" alt="${p.title}" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
@@ -422,11 +426,34 @@ async function buscarProductos(keyword) {
             }));
         }
 
-        return items;
+        return processBestProducts(items);
     } catch (error) {
         console.error("Error cargando productos de AliExpress:", error);
         return [];
     }
+}
+
+/**
+ * Procesa una lista de productos para marcar los "Mejores" según criterios
+ */
+function processBestProducts(products) {
+    if (!products || products.length === 0) return [];
+
+    // 1. Identificar el más barato
+    const cheapest = [...products].sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
+    
+    // 2. Identificar el más vendido (si tiene ventas)
+    const topSales = [...products].sort((a, b) => (b.sales || 0) - (a.sales || 0))[0];
+    
+    // 3. Identificar el mejor valorado (si tiene rating)
+    const topRated = [...products].filter(p => p.rating).sort((a, b) => b.rating - a.rating)[0];
+
+    return products.map(p => {
+        if (p.id === cheapest.id) p.tag = "PRECIO MÁS BAJO";
+        else if (topSales && p.id === topSales.id && p.sales > 0) p.tag = "MÁS VENDIDO";
+        else if (topRated && p.id === topRated.id && p.rating >= 4.5) p.tag = "MEJOR VALORADO";
+        return p;
+    });
 }
 
 /**

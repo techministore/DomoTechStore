@@ -162,6 +162,7 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
     grid.innerHTML = products.map(p => {
         return `
             <article class="card product-card">
+                ${p.tag ? `<div class="badge" style="background: var(--primary); position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                 <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
                 <div class="product-image-container">
                     <img src="${p.image}" alt="${p.title}">
@@ -171,6 +172,7 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
                     <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
                     <span class="current-price">${p.price}€</span>
                 </div>
+                ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
                 <a href="${p.link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${p.id}', 'aliexpress')">
                     Comprar Ahora →
                 </a>

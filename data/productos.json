@@ -12,7 +12,7 @@
         "ventas": 1200,
         "valoracion": 4.8,
         "descripcion": "Navegación láser profesional y potencia de succión de 4000Pa. El mejor rendimiento en limpieza inteligente.",
-        "imagen": "https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&w=400&q=80"
+        "imagen": "https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&w=400&h=400&q=80"
     },
     {
         "id": 2,
@@ -27,7 +27,7 @@
         "ventas": 850,
         "valoracion": 4.9,
         "descripcion": "Compatible con Apple HomeKey y huella dactilar. Seguridad premium para tu hogar conectado.",
-        "imagen": "https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80"
+        "imagen": "https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&h=400&q=80"
     },
     {
         "id": 3,
@@ -42,7 +42,7 @@
         "ventas": 2500,
         "valoracion": 4.7,
         "descripcion": "Control total del consumo eléctrico. Compatible con Alexa y Google Home para automatizaciones.",
-        "imagen": "https://images.unsplash.com/photo-1555664424-778a1e5e1b48?auto=format&fit=crop&w=400&q=80"
+        "imagen": "https://images.unsplash.com/photo-1555664424-778a1e5e1b48?auto=format&fit=crop&w=400&h=400&q=80"
     },
     {
         "id": 6,
@@ -57,6 +57,6 @@
         "ventas": 320,
         "valoracion": 4.4,
         "descripcion": "Sensores exteriores e interiores con pantalla a color. Un nicho muy rentable y con poca competencia SEO.",
-        "imagen": "https://images.unsplash.com/photo-1504328332780-bfbfaf1796b0?auto=format&fit=crop&w=400&q=80"
+        "imagen": "https://images.unsplash.com/photo-1504328332780-bfbfaf1796b0?auto=format&fit=crop&w=400&h=400&q=80"
     }
 ]

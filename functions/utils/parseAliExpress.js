@@ -12,7 +12,10 @@ export function parseAliExpressItem(item) {
         price: finalPrice,
         image: finalImage,
         link: finalLink,
-        shop: "AliExpress"
+        shop: "AliExpress",
+        rating: item.rating || null,
+        sales: item.sales || 0,
+        shipping: item.shipping || null
     };
 }
 

@@ -48,7 +48,10 @@ export async function onRequest(context) {
                 price: p.product_price,
                 sale_price: p.product_price,
                 image_url: p.product_main_image_url || p.product_small_image_urls?.[0],
-                product_url: p.product_detail_url
+                product_url: p.product_detail_url,
+                rating: p.evaluate_rate || p.evaluate_score || null,
+                sales: p.sales_count || p.volume || 0,
+                shipping: p.shipping_fee === 0 || p.is_free_shipping ? "Gratis" : (p.shipping_fee || null)
             }));
         }
 
