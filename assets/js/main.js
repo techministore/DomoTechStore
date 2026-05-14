@@ -142,9 +142,11 @@ async function loadDailyOffers(basePath) {
         
         const products = await buscarProductos(keyword);
         if (products && products.length > 0) {
-            container.innerHTML = products.slice(0, 4).map(p => `
+            container.innerHTML = products.slice(0, 4).map(p => {
+                const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
+                return `
                 <article class="card product-card" style="position: relative;">
-                    ${p.tag ? `<div class="badge" style="background: var(--primary); position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
+                    ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                     <div class="urgency-badge">⚡ ¡SUPER OFERTA!</div>
                     <div class="product-image-container">
                         <img src="${p.image}" alt="${p.title}">
@@ -157,7 +159,8 @@ async function loadDailyOffers(basePath) {
                     ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
                     <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Comprar Ahora →</a>
                 </article>
-            `).join('');
+                `;
+            }).join('');
         } else {
             renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
         }
@@ -181,9 +184,11 @@ async function loadFeatured(basePath) {
 
         const products = await buscarProductos(`best ${randomCategory.keyword}`);
         if (products && products.length > 0) {
-            container.innerHTML = products.slice(0, 4).map(p => `
+            container.innerHTML = products.slice(0, 4).map(p => {
+                const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
+                return `
                 <article class="card product-card" style="position: relative;">
-                    ${p.tag ? `<div class="badge" style="background: var(--primary); position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
+                    ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                     <div class="product-image-container">
                         <img src="${p.image}" alt="${p.title}">
                     </div>
@@ -194,7 +199,8 @@ async function loadFeatured(basePath) {
                     ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
                     <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Ver Detalles →</a>
                 </article>
-            `).join('');
+                `;
+            }).join('');
         } else {
             renderProductGrid('productos-destacados', `${basePath}data/productos.json`, p => p.destacado, 4);
         }
@@ -355,8 +361,10 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
 
             container.innerHTML = products.map(p => {
                 const discount = p.old_price ? Math.round(((p.old_price - p.price) / p.old_price) * 100) : 0;
+                const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
                 return `
                     <article class="card product-card" itemscope itemtype="https://schema.org/Product" style="position: relative;">
+                        ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                         ${showDiscount && discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
                         <div class="product-image-container">
                             <img src="${p.image}" alt="${p.title}" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
@@ -474,10 +482,19 @@ function processBestProducts(products) {
     
     // 3. Identificar el mejor valorado (si tiene rating)
     const topRated = [...products].filter(p => p.rating).sort((a, b) => b.rating - a.rating)[0];
+    
+    // 4. Identificar el de mayor comisión o "Hot Product" (Simulado si no hay dato real)
+    const recommended = [...products].sort((a, b) => {
+        // Si hay dato de comisión real, usarlo. Si no, priorizar rating + ventas
+        const valA = (a.commission || 0) * 100 + (a.rating || 0) * 10 + (a.sales || 0) / 100;
+        const valB = (b.commission || 0) * 100 + (b.rating || 0) * 10 + (b.sales || 0) / 100;
+        return valB - valA;
+    })[0];
 
     return products.map(p => {
-        if (p.id === cheapest.id) p.tag = "PRECIO MÁS BAJO";
-        else if (topSales && p.id === topSales.id && p.sales > 0) p.tag = "MÁS VENDIDO";
+        if (p.id === recommended.id && (p.commission || p.rating >= 4.8)) p.tag = "RECOMENDADO";
+        else if (p.id === cheapest.id) p.tag = "PRECIO MÁS BAJO";
+        else if (topSales && p.id === topSales.id && p.sales > 100) p.tag = "MÁS VENDIDO";
         else if (topRated && p.id === topRated.id && p.rating >= 4.5) p.tag = "MEJOR VALORADO";
         return p;
     });

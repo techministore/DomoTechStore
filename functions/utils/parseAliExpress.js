@@ -15,7 +15,8 @@ export function parseAliExpressItem(item) {
         shop: "AliExpress",
         rating: item.rating || null,
         sales: item.sales || 0,
-        shipping: item.shipping || null
+        shipping: item.shipping || null,
+        commission: item.commission || null
     };
 }
 

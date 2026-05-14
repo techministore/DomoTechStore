@@ -93,6 +93,12 @@ a { text-decoration: none; color: inherit; transition: var(--transition); }
     font-weight: 800;
     margin-bottom: 10px;
 }
+
+/* ETIQUETA RECOMENDADO (ALTA COMISIÓN) */
+.badge-recommended {
+    background: #facc15 !important; /* Amarillo/Dorado para resaltar */
+    color: #0f172a !important;
+}
 .discount-badge {
     position: absolute;
     top: 10px;

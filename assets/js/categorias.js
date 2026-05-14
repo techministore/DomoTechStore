@@ -92,10 +92,11 @@ function renderAutosuficiente(products, container) {
         const price = p.price || p.precio_aproximado;
         const link = p.link || p.enlace;
         const tag = p.tag || (p.oferta ? "OFERTA" : "");
+        const tagClass = tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
 
         return `
             <article class="card product-card" style="position: relative;">
-                ${tag ? `<div class="badge" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${tag}</div>` : ''}
+                ${tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${tag}</div>` : ''}
                 <div class="product-image-container">
                     <img src="${image}" alt="${title}" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=AliExpress'">
                 </div>

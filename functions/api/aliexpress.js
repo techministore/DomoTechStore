@@ -51,7 +51,8 @@ export async function onRequest(context) {
                 product_url: p.product_detail_url,
                 rating: p.evaluate_rate || p.evaluate_score || null,
                 sales: p.sales_count || p.volume || 0,
-                shipping: p.shipping_fee === 0 || p.is_free_shipping ? "Gratis" : (p.shipping_fee || null)
+                shipping: p.shipping_fee === 0 || p.is_free_shipping ? "Gratis" : (p.shipping_fee || null),
+                commission: p.commission_rate || p.promotion_rate || null // Capturar comisión si la API la da
             }));
         }
 

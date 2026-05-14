@@ -160,9 +160,10 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
     }
 
     grid.innerHTML = products.map(p => {
+        const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
         return `
             <article class="card product-card">
-                ${p.tag ? `<div class="badge" style="background: var(--primary); position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
+                ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                 <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
                 <div class="product-image-container">
                     <img src="${p.image}" alt="${p.title}">
