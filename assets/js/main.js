@@ -300,35 +300,45 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
     fetch(url)
         .then(r => r.json())
         .then(data => {
-            let products = data.filter(filterFn);
-            if (limit) products = products.slice(0, limit);
+            let rawProducts = data.filter(filterFn);
+            if (limit) rawProducts = rawProducts.slice(0, limit);
 
-            if (products.length === 0) {
+            if (rawProducts.length === 0) {
                 container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">No hay productos disponibles en este momento.</p>';
                 return;
             }
 
-            // Generar Structured Data para estos productos
-            injectProductSchema(products);
+            // Normalizar productos locales al formato unificado
+            const products = rawProducts.map(p => ({
+                id: p.id,
+                title: p.nombre,
+                price: p.precio_aproximado,
+                old_price: p.precio_original,
+                image: p.imagen || 'assets/img/placeholder-tech.jpg',
+                link: formatAffiliateLink(p.enlace, 'domotech2026'),
+                descripcion: p.descripcion
+            }));
+
+            // Generar Structured Data
+            injectProductSchema(rawProducts);
 
             container.innerHTML = products.map(p => {
-                const discount = p.precio_original ? Math.round(((p.precio_original - p.precio_aproximado) / p.precio_original) * 100) : 0;
+                const discount = p.old_price ? Math.round(((p.old_price - p.price) / p.old_price) * 100) : 0;
                 return `
                     <article class="card product-card" itemscope itemtype="https://schema.org/Product">
                         ${showDiscount && discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
-                        <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
-                            <img src="${p.imagen || p.image_url || 'assets/img/placeholder-tech.jpg'}" alt="${p.nombre}" style="width: 100%; height: 100%; object-fit: contain;">
+                        <div class="product-image-container">
+                            <img src="${p.image}" alt="${p.title}" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
                         </div>
-                        <h3 itemprop="name" style="font-size: 1.1rem; height: 2.5em; overflow: hidden;">${p.nombre}</h3>
-                        <p class="product-desc" itemprop="description" style="font-size: 0.85rem; height: 3em; overflow: hidden; color: var(--muted-text);">${p.descripcion}</p>
+                        <h3 itemprop="name">${p.title}</h3>
+                        <p class="product-desc" itemprop="description">${p.descripcion}</p>
                         <div class="price-container" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
                             <meta itemprop="priceCurrency" content="EUR">
-                            <meta itemprop="price" content="${p.precio_aproximado}">
-                            <link itemprop="availability" href="https://schema.org/InStock">
-                            ${p.precio_original > p.precio_aproximado ? `<span class="old-price">${p.precio_original}€</span>` : ''}
-                            <span class="current-price">~${p.precio_aproximado}€</span>
+                            <meta itemprop="price" content="${p.price}">
+                            ${p.old_price > p.price ? `<span class="old-price">${p.old_price}€</span>` : ''}
+                            <span class="current-price">~${p.price}€</span>
                         </div>
-                        <a href="${formatAffiliateLink(p.enlace, 'domotech2026')}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" itemprop="url">Ver en AliExpress →</a>
+                        <a href="${p.link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${p.id}', 'local')">Ver en AliExpress →</a>
                     </article>
                 `;
             }).join('');
@@ -382,26 +392,29 @@ async function buscarProductos(keyword) {
         if (cached) {
             const { data, timestamp } = JSON.parse(cached);
             if (Date.now() - timestamp < CACHE_TIME) {
-                console.log(`Cargando "${keyword}" desde caché...`);
                 return data;
             }
         }
-    } catch (e) {
-        console.warn("Error leyendo caché:", e);
-    }
+    } catch (e) {}
 
-    // 2. Si no hay caché o ha expirado, llamar a la API
+    // 2. Llamada a la API
     const endpoint = "/api/aliexpress";
     
     try {
         const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error("Error en la respuesta de la API");
+        
+        if (res.status === 401) {
+            console.error("API Error 401: Unauthorized. Revisa tu RAPIDAPI_KEY en Cloudflare.");
+            return [];
+        }
+        
+        if (!res.ok) throw new Error(`Error API: ${res.status}`);
         
         const data = await res.json();
         const items = (data.result && data.result.items) || [];
 
-        // 3. Guardar en caché si hay resultados
+        // 3. Guardar en caché
         if (items.length > 0) {
             localStorage.setItem(cacheKey, JSON.stringify({
                 data: items,
@@ -411,7 +424,7 @@ async function buscarProductos(keyword) {
 
         return items;
     } catch (error) {
-        console.error("Error en AliExpress Function:", error);
+        console.error("Error cargando productos de AliExpress:", error);
         return [];
     }
 }
