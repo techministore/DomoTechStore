@@ -123,28 +123,32 @@ function fixLinks(basePath) {
 }
 
 /**
- * Carga Ofertas del Día (Optimizado con AliExpress API)
+ * Carga Ofertas del Día (Optimizado con AliExpress API y Rotación)
  */
 async function loadDailyOffers(basePath) {
     const container = document.getElementById('ofertas-dia');
     if (!container) return;
 
     try {
-        // Usamos una keyword potente para ofertas
-        const products = await buscarProductos("super deals smart home");
+        // Rotación de keywords para ofertas frescas
+        const offerKeywords = ["flash deals", "hot sale", "best price", "discount smart home"];
+        const keyword = offerKeywords[Math.floor(Math.random() * offerKeywords.length)];
+        
+        const products = await buscarProductos(keyword);
         if (products && products.length > 0) {
             container.innerHTML = products.slice(0, 4).map(p => `
-                <article class="card product-card">
-                    <div class="urgency-badge">⚡ OFERTA FLASH</div>
+                <article class="card product-card" itemscope itemtype="https://schema.org/Product">
+                    <div class="urgency-badge">⚡ ¡SUPER OFERTA!</div>
                     <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
-                        <img src="${p.image || p.image_url || 'assets/img/placeholder-tech.jpg'}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
+                        <img src="${p.image || p.image_url}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;" itemprop="image">
                     </div>
-                    <h3 style="font-size: 1rem; height: 2.5em; overflow: hidden;">${p.title}</h3>
-                    <div class="price-container">
+                    <h3 itemprop="name" style="font-size: 1rem; height: 2.5em; overflow: hidden;">${p.title}</h3>
+                    <div class="price-container" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
                         <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
-                        <span class="current-price">${p.price}€</span>
+                        <span class="current-price" itemprop="price">${p.price}€</span>
+                        <meta itemprop="priceCurrency" content="EUR">
                     </div>
-                    <a href="${formatAffiliateLink(p.link || p.product_url, 'domotech2026')}" class="btn-aliexpress" target="_blank">Comprar Ahora →</a>
+                    <a href="${p.promotion_link || p.link || p.product_url}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id || 'offer'}', 'aliexpress')">Comprar Ahora →</a>
                 </article>
             `).join('');
         } else {
@@ -153,8 +157,8 @@ async function loadDailyOffers(basePath) {
     } catch (error) {
         console.error("Error cargando ofertas API:", error);
         renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
-     }
- }
+    }
+}
 
 /**
  * Carga productos destacados (Automatizado)
