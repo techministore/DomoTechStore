@@ -7,7 +7,7 @@ import { parseAliExpressItem } from "../utils/parseAliExpress.js";
  */
 
 export async function onRequest(context) {
-    const { request } = context;
+    const { request, env } = context;
     
     // Manejar preflight CORS
     const optionsResponse = handleOptions(request);
@@ -16,71 +16,58 @@ export async function onRequest(context) {
     const url = new URL(request.url);
     const keyword = url.searchParams.get('keyword') || 'smart home';
 
-    // CONFIGURACIÓN (Segura en el servidor)
-    const APP_KEY = "534120";
-    const APP_SECRET = "iyAwX4NpupyrVHI36esNEys1nvLG0Aig";
+    // CONFIGURACIÓN (Usando tu variable secreta de Cloudflare)
+    const RAPIDAPI_KEY = env.RAPIDAPI_KEY;
     const TRACKING_ID = "domotech2026";
 
-    // 1. Preparar parámetros de búsqueda
-    const params = {
-        app_key: APP_KEY,
-        timestamp: Date.now().toString(),
-        keywords: keyword,
-        fields: "item_id,title,price,image_url,sale_price,product_url",
-        tracking_id: TRACKING_ID,
-        method: 'aliexpress.affiliate.product.query',
-        v: '2.0',
-        sign_method: 'md5',
-        format: 'json'
-    };
-
-    // 2. Generar Firma
-    const sign = await generateAliExpressSign(params, APP_SECRET);
-    params.sign = sign;
+    if (!RAPIDAPI_KEY) {
+        return new Response(JSON.stringify({ error: "Falta RAPIDAPI_KEY en la configuración de Cloudflare" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+    }
 
     try {
-        // 3. Buscar productos
-        const apiRes = await fetch(`https://api.aliexpress.com/item_search?${new URLSearchParams(params)}`);
-        const data = await apiRes.json();
-
-        // 4. Generar Deep Links si hay resultados
-        if (data.result && data.result.items && data.result.items.length > 0) {
-            const urls = data.result.items.map(i => i.product_url).join(',');
-            
-            const linkParams = {
-                app_key: APP_KEY,
-                timestamp: Date.now().toString(),
-                method: 'aliexpress.affiliate.link.generate',
-                v: '2.0',
-                sign_method: 'md5',
-                format: 'json',
-                source_values: urls,
-                tracking_id: TRACKING_ID
-            };
-
-            const linkSign = await generateAliExpressSign(linkParams, APP_SECRET);
-            linkParams.sign = linkSign;
-
-            const linkRes = await fetch(`https://api.aliexpress.com/affiliate_link_generate?${new URLSearchParams(linkParams)}`);
-            const linkData = await linkRes.json();
-
-            // Combinar datos y parsear
-            if (linkData.result && linkData.result.links) {
-                data.result.items = data.result.items.map((item, idx) => {
-                    if (linkData.result.links[idx]) {
-                        item.promotion_link = linkData.result.links[idx].promotion_link;
-                    }
-                    return parseAliExpressItem(item);
-                });
+        // 1. Llamada a AliExpress vía RapidAPI (Búsqueda de productos)
+        // Usamos un endpoint estándar de RapidAPI para AliExpress
+        const apiRes = await fetch(`https://aliexpress-data-service.p.rapidapi.com/product/search?query=${encodeURIComponent(keyword)}&page=1`, {
+            method: 'GET',
+            headers: {
+                'x-rapidapi-key': RAPIDAPI_KEY,
+                'x-rapidapi-host': 'aliexpress-data-service.p.rapidapi.com'
             }
+        });
+
+        const data = await apiRes.json();
+        let items = [];
+
+        // 2. Normalizar los resultados según el formato de RapidAPI
+        // Adaptamos esto según la respuesta típica (puedes ajustarlo si usas otra API específica)
+        if (data && data.data && data.data.products) {
+            items = data.data.products.map(p => ({
+                item_id: p.product_id,
+                title: p.product_title,
+                price: p.product_price,
+                sale_price: p.product_price, // RapidAPI suele dar el precio final
+                image_url: p.product_main_image_url || p.product_small_image_urls?.[0],
+                product_url: p.product_detail_url
+            }));
         }
 
-        return new Response(JSON.stringify(data), {
+        // 3. Generar Deep Links si hay resultados (Opcional si RapidAPI ya los da)
+        // Para asegurar comisiones, inyectamos tu Tracking ID
+        const finalItems = items.map(item => {
+            const separator = item.product_url.includes('?') ? '&' : '?';
+            item.promotion_link = `${item.product_url}${separator}aff_id=${TRACKING_ID}`;
+            return parseAliExpressItem(item);
+        });
+
+        return new Response(JSON.stringify({ result: { items: finalItems } }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
 
     } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        return new Response(JSON.stringify({ error: "Error en RapidAPI", details: error.message }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
