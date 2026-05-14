@@ -171,7 +171,7 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
                     <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
                     <span class="current-price">${p.price}€</span>
                 </div>
-                <a href="${p.link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
+                <a href="${p.link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${p.id}', 'aliexpress')">
                     Comprar Ahora →
                 </a>
             </article>

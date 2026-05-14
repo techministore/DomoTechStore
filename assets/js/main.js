@@ -130,8 +130,14 @@ async function loadDailyOffers(basePath) {
     if (!container) return;
 
     try {
-        // Rotación de keywords para ofertas frescas
+        const categoriesRes = await fetch(`${basePath}data/categorias.json`);
+        const allCategories = await categoriesRes.json();
+        
+        // Rotación de keywords para ofertas frescas: Mezcla de genéricas y categorías
         const offerKeywords = ["flash deals", "hot sale", "best price", "discount smart home"];
+        const randomCategory = allCategories[Math.floor(Math.random() * allCategories.length)];
+        offerKeywords.push(randomCategory.keyword);
+        
         const keyword = offerKeywords[Math.floor(Math.random() * offerKeywords.length)];
         
         const products = await buscarProductos(keyword);
@@ -147,7 +153,7 @@ async function loadDailyOffers(basePath) {
                         <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
                         <span class="current-price">${p.price}€</span>
                     </div>
-                    <a href="${p.link}" class="btn-aliexpress" target="_blank">Comprar Ahora →</a>
+                    <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Comprar Ahora →</a>
                 </article>
             `).join('');
         } else {
@@ -167,7 +173,11 @@ async function loadFeatured(basePath) {
     if (!container) return;
 
     try {
-        const products = await buscarProductos("top rated smart home gadgets");
+        const categoriesRes = await fetch(`${basePath}data/categorias.json`);
+        const allCategories = await categoriesRes.json();
+        const randomCategory = allCategories[Math.floor(Math.random() * allCategories.length)];
+
+        const products = await buscarProductos(`best ${randomCategory.keyword}`);
         if (products && products.length > 0) {
             container.innerHTML = products.slice(0, 4).map(p => `
                 <article class="card product-card">
@@ -178,7 +188,7 @@ async function loadFeatured(basePath) {
                     <div class="price-container">
                         <span class="current-price">${p.price}€</span>
                     </div>
-                    <a href="${p.link}" class="btn-aliexpress" target="_blank">Ver Detalles →</a>
+                    <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Ver Detalles →</a>
                 </article>
             `).join('');
         } else {
@@ -216,7 +226,7 @@ async function loadTopSales(basePath) {
                     <div style="flex-grow: 1;">
                         <div class="cat-tag" style="font-size: 0.7rem; margin-bottom: 5px;">${cat.nombre}</div>
                         <h4 style="font-size: 0.9rem; margin-bottom: 5px; height: 2.4em; overflow: hidden;">${product.title}</h4>
-                        <a href="${product.link}" class="btn-link" target="_blank">Más vendido →</a>
+                        <a href="${product.link}" class="btn-link" target="_blank" onclick="trackClick('${product.id}', 'aliexpress')">Más vendido →</a>
                     </div>
                 </div>
             `;
@@ -403,5 +413,30 @@ async function buscarProductos(keyword) {
     } catch (error) {
         console.error("Error en AliExpress Function:", error);
         return [];
+    }
+}
+
+/**
+ * Sistema de estadísticas de clics y conversiones (100% Autónomo)
+ * Guarda los clics en localStorage para análisis posterior
+ */
+function trackClick(productId, provider) {
+    try {
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": [], "total": 0}');
+        stats.clicks.push({
+            id: productId,
+            provider: provider,
+            url: window.location.pathname,
+            timestamp: new Date().toISOString()
+        });
+        stats.total++;
+        
+        // Mantener solo los últimos 100 clics para no saturar el storage
+        if (stats.clicks.length > 100) stats.clicks.shift();
+        
+        localStorage.setItem('domotech_stats', JSON.stringify(stats));
+        console.log(`Click registrado: ${productId} (${provider})`);
+    } catch (e) {
+        console.error("Error registrando click:", e);
     }
 }

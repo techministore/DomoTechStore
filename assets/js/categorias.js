@@ -61,7 +61,7 @@ function appendApiProducts(products) {
                     <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
                     <span class="current-price">${p.price}€</span>
                 </div>
-                <a href="${p.link}" class="btn-aliexpress" target="_blank">COMPRAR AHORA</a>
+                <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">COMPRAR AHORA</a>
             </article>
         `;
     }).join('');
