@@ -68,26 +68,6 @@ function filterLocalItems(searchTerm) {
 }
 
 /**
- * Función proporcionada para buscar en AliExpress (Ahora vía Cloudflare Pages Functions)
- */
-async function buscarProductos(keyword) {
-    // LLAMADA LOCAL AL BACKEND INTEGRADO EN CLOUDFLARE PAGES
-    const endpoint = "/aliexpress";
-    
-    try {
-        const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        
-        // La API devuelve los items normalizados por nuestro parser
-        return (data.result && data.result.items) || [];
-    } catch (error) {
-        console.error("Error en AliExpress Function:", error);
-        return [];
-    }
-}
-
-/**
  * Muestra los productos en la web (Script base optimizado)
  * @param {string} keyword - Palabra clave a buscar
  * @param {string} customContainerId - ID opcional del contenedor
@@ -147,36 +127,23 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
     }
 
     grid.innerHTML = products.map(p => {
-        // Soporte para múltiples formatos de imagen de la API
-        const imageUrl = p.image_url || p.product_main_image_url || p.image || 'assets/img/placeholder-tech.jpg';
-        
         return `
             <article class="card product-card">
                 <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
-                <div class="product-image-container" style="height: 200px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff; position: relative;">
-                    <img src="${imageUrl}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="product-image-container">
+                    <img src="${p.image}" alt="${p.title}">
                 </div>
-                <h3 style="font-size: 1rem; height: 3em; overflow: hidden; margin-bottom: 10px;">${p.title}</h3>
+                <h3>${p.title}</h3>
                 <div class="price-container">
-                    <span class="old-price">${(parseFloat(p.sale_price || p.price) * 1.4).toFixed(2)}€</span>
-                    <span class="current-price">${p.sale_price || p.price}€</span>
+                    <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
+                    <span class="current-price">${p.price}€</span>
                 </div>
-                <p style="font-size: 0.8rem; color: #4ade80; margin: 5px 0; font-weight: bold;">✓ Envío Gratis disponible</p>
-                <a href="${p.promotion_link || formatAffiliateLink(p.product_url, API_CONFIG.tracking_id)}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
+                <a href="${p.link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
                     Comprar Ahora →
                 </a>
             </article>
         `;
     }).join('');
-}
-
-/**
- * Asegura que el enlace de afiliado esté bien formateado
- */
-function formatAffiliateLink(url, trackingId) {
-    if (!url) return "#";
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}aff_id=${trackingId}`;
 }
 
 /**

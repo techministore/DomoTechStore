@@ -3,36 +3,42 @@
         "id": 1,
         "nombre": "Iluminación Inteligente",
         "slug": "iluminacion-inteligente",
+        "keyword": "rgb led strip alexa zigbee",
         "descripcion_corta": "Bombillas, tiras LED y lámparas conectadas para crear el ambiente perfecto."
     },
     {
         "id": 2,
         "nombre": "Seguridad y Vigilancia",
         "slug": "seguridad-vigilancia",
+        "keyword": "security camera wifi outdoor tuya",
         "descripcion_corta": "Protege tu hogar con cámaras, alarmas y cerraduras inteligentes de última generación."
     },
     {
         "id": 3,
         "nombre": "Enchufes y Energía Smart",
         "slug": "enchufes-energia-smart",
+        "keyword": "smart plug wifi 20a monitor",
         "descripcion_corta": "Controla el encendido de tus electrodomésticos y ahorra en tu factura eléctrica."
     },
     {
         "id": 4,
         "nombre": "Sensores y Automatización",
         "slug": "sensores-automatizacion",
+        "keyword": "zigbee sensor temperature motion",
         "descripcion_corta": "Haz que tu casa reaccione a tus movimientos y necesidades de forma automática."
     },
     {
         "id": 5,
         "nombre": "Limpieza Inteligente",
         "slug": "limpieza-inteligente",
+        "keyword": "robot vacuum mop xiaomi roborock",
         "descripcion_corta": "Robots aspiradores y gadgets que mantienen tu hogar impecable sin esfuerzo."
     },
     {
         "id": 6,
         "nombre": "Controladores y Asistentes",
         "slug": "controladores-asistentes",
+        "keyword": "zigbee gateway hub home assistant",
         "descripcion_corta": "El cerebro de tu Smart Home: gestiona todo mediante la voz o pantallas táctiles."
     }
 ]

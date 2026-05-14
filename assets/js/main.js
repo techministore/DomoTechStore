@@ -137,18 +137,17 @@ async function loadDailyOffers(basePath) {
         const products = await buscarProductos(keyword);
         if (products && products.length > 0) {
             container.innerHTML = products.slice(0, 4).map(p => `
-                <article class="card product-card" itemscope itemtype="https://schema.org/Product">
+                <article class="card product-card">
                     <div class="urgency-badge">⚡ ¡SUPER OFERTA!</div>
-                    <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
-                        <img src="${p.image || p.image_url}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;" itemprop="image">
+                    <div class="product-image-container">
+                        <img src="${p.image}" alt="${p.title}">
                     </div>
-                    <h3 itemprop="name" style="font-size: 1rem; height: 2.5em; overflow: hidden;">${p.title}</h3>
-                    <div class="price-container" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                    <h3>${p.title}</h3>
+                    <div class="price-container">
                         <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
-                        <span class="current-price" itemprop="price">${p.price}€</span>
-                        <meta itemprop="priceCurrency" content="EUR">
+                        <span class="current-price">${p.price}€</span>
                     </div>
-                    <a href="${p.promotion_link || p.link || p.product_url}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id || 'offer'}', 'aliexpress')">Comprar Ahora →</a>
+                    <a href="${p.link}" class="btn-aliexpress" target="_blank">Comprar Ahora →</a>
                 </article>
             `).join('');
         } else {
@@ -172,14 +171,14 @@ async function loadFeatured(basePath) {
         if (products && products.length > 0) {
             container.innerHTML = products.slice(0, 4).map(p => `
                 <article class="card product-card">
-                    <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
-                        <img src="${p.image || p.image_url || 'assets/img/placeholder-tech.jpg'}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
+                    <div class="product-image-container">
+                        <img src="${p.image}" alt="${p.title}">
                     </div>
-                    <h3 style="font-size: 1rem; height: 2.5em; overflow: hidden;">${p.title}</h3>
+                    <h3>${p.title}</h3>
                     <div class="price-container">
                         <span class="current-price">${p.price}€</span>
                     </div>
-                    <a href="${formatAffiliateLink(p.link || p.product_url, 'domotech2026')}" class="btn-aliexpress" target="_blank">Ver Detalles →</a>
+                    <a href="${p.link}" class="btn-aliexpress" target="_blank">Ver Detalles →</a>
                 </article>
             `).join('');
         } else {
@@ -197,27 +196,27 @@ async function loadTopSales(basePath) {
     const container = document.getElementById('top-ventas-categorias');
     if (!container) return;
 
-    const categories = [
-        { name: "Cámaras", keyword: "security camera wifi" },
-        { name: "Enchufes", keyword: "smart plug tuya" },
-        { name: "Iluminación", keyword: "rgb bulb alexa" }
-    ];
-
     try {
-        const results = await Promise.all(categories.map(cat => buscarProductos(cat.keyword)));
+        const categoriesRes = await fetch(`${basePath}data/categorias.json`);
+        const allCategories = await categoriesRes.json();
         
-        container.innerHTML = categories.map((cat, idx) => {
+        // Seleccionamos 3 categorías al azar o fijas para mostrar
+        const selectedCategories = allCategories.slice(0, 3);
+
+        const results = await Promise.all(selectedCategories.map(cat => buscarProductos(cat.keyword)));
+        
+        container.innerHTML = selectedCategories.map((cat, idx) => {
             const product = results[idx]?.[0];
             if (!product) return '';
             return `
                 <div class="top-sales-item card" style="display: flex; gap: 15px; align-items: center; padding: 15px;">
                     <div style="width: 80px; height: 80px; flex-shrink: 0; background: #fff; border-radius: 8px; overflow: hidden;">
-                        <img src="${product.image || product.image_url}" style="width: 100%; height: 100%; object-fit: contain;">
+                        <img src="${product.image}" style="width: 100%; height: 100%; object-fit: contain;">
                     </div>
                     <div style="flex-grow: 1;">
-                        <div class="cat-tag" style="font-size: 0.7rem; margin-bottom: 5px;">${cat.name}</div>
+                        <div class="cat-tag" style="font-size: 0.7rem; margin-bottom: 5px;">${cat.nombre}</div>
                         <h4 style="font-size: 0.9rem; margin-bottom: 5px; height: 2.4em; overflow: hidden;">${product.title}</h4>
-                        <a href="${formatAffiliateLink(product.link || product.product_url, 'domotech2026')}" class="btn-link" target="_blank">Más vendido →</a>
+                        <a href="${product.link}" class="btn-link" target="_blank">Más vendido →</a>
                     </div>
                 </div>
             `;
@@ -357,4 +356,22 @@ function injectProductSchema(products) {
 
     script.text = JSON.stringify(schema);
     document.head.appendChild(script);
+}
+
+/**
+ * Función global para buscar en AliExpress vía API
+ */
+async function buscarProductos(keyword) {
+    const endpoint = "/api/aliexpress";
+    
+    try {
+        const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Error en la respuesta de la API");
+        const data = await res.json();
+        return (data.result && data.result.items) || [];
+    } catch (error) {
+        console.error("Error en AliExpress Function:", error);
+        return [];
+    }
 }

@@ -1,37 +1,41 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const productContainer = document.getElementById('product-list');
     const currentCategory = document.body.dataset.category;
     const isSub = window.location.pathname.includes('/categorias/') || window.location.pathname.includes('/comparativas/');
-    const jsonPath = isSub ? '../data/productos.json' : 'data/productos.json';
+    const basePath = isSub ? '../' : '';
+    const jsonPath = `${basePath}data/productos.json`;
+    const categoriesPath = `${basePath}data/categorias.json`;
 
-    // 2. Cargar productos desde el JSON local
-    fetch(jsonPath)
-        .then(response => response.json())
-        .then(products => {
-            if (productContainer && currentCategory) {
-                const filtered = products.filter(p => p.categoria === currentCategory);
-                renderAutosuficiente(filtered, productContainer);
-                
-                // 3. AUTOMATIZACIÓN: Si hay pocos productos locales, traer de la API
-                if (filtered.length < 8 && typeof buscarProductos === 'function') {
-                    const apiKeywords = {
-                        'iluminacion-inteligente': 'rgb led strip alexa zigbee',
-                        'seguridad-vigilancia': 'security camera wifi outdoor tuya',
-                        'enchufes-energia-smart': 'smart plug wifi 20a monitor',
-                        'sensores-automatizacion': 'zigbee sensor temperature motion',
-                        'limpieza-inteligente': 'robot vacuum mop xiaomi roborock',
-                        'controladores-asistentes': 'zigbee gateway hub home assistant'
-                    };
-                    
-                    const keyword = apiKeywords[currentCategory] || currentCategory.replace('-', ' ');
-                    buscarProductos(keyword).then(apiProducts => {
-                        if (apiProducts && apiProducts.length > 0) {
-                            appendApiProducts(apiProducts);
-                        }
-                    });
+    if (!productContainer || !currentCategory) return;
+
+    try {
+        // 1. Cargar productos locales y datos de categorías en paralelo
+        const [productsRes, categoriesRes] = await Promise.all([
+            fetch(jsonPath),
+            fetch(categoriesPath)
+        ]);
+
+        const products = await productsRes.json();
+        const categories = await categoriesRes.json();
+
+        // 2. Filtrar y renderizar productos locales
+        const filtered = products.filter(p => p.categoria === currentCategory);
+        renderAutosuficiente(filtered, productContainer);
+
+        // 3. AUTOMATIZACIÓN: Si hay pocos productos locales, traer de la API usando el keyword del JSON
+        if (filtered.length < 8 && typeof buscarProductos === 'function') {
+            const categoryData = categories.find(c => c.slug === currentCategory);
+            const keyword = categoryData?.keyword || currentCategory.replace('-', ' ');
+            
+            buscarProductos(keyword).then(apiProducts => {
+                if (apiProducts && apiProducts.length > 0) {
+                    appendApiProducts(apiProducts);
                 }
-            }
-        });
+            });
+        }
+    } catch (error) {
+        console.error("Error cargando productos o categorías:", error);
+    }
 });
 
 /**
@@ -46,18 +50,18 @@ function appendApiProducts(products) {
             <h3 style="font-size: 1.2rem; margin-bottom: 20px; opacity: 0.8;">Más ofertas recomendadas</h3>
         </div>
     ` + products.map(p => {
-        const pUrl = p.promotion_link || p.link || p.product_url;
         return `
-            <article class="card product-card" itemscope itemtype="https://schema.org/Product">
-                <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
-                    <img src="${p.image || p.image_url}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;" itemprop="image">
+            <article class="card product-card">
+                <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
+                <div class="product-image-container">
+                    <img src="${p.image}" alt="${p.title}">
                 </div>
-                <h3 itemprop="name" style="font-size: 1rem; height: 2.5em; overflow: hidden;">${p.title}</h3>
-                <div class="price-container" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-                    <span class="current-price" itemprop="price">${p.price}€</span>
-                    <meta itemprop="priceCurrency" content="EUR">
+                <h3>${p.title}</h3>
+                <div class="price-container">
+                    <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
+                    <span class="current-price">${p.price}€</span>
                 </div>
-                <a href="${pUrl}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id || 'api'}', 'aliexpress')">COMPRAR AHORA</a>
+                <a href="${p.link}" class="btn-aliexpress" target="_blank">COMPRAR AHORA</a>
             </article>
         `;
     }).join('');
