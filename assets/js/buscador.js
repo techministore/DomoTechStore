@@ -89,18 +89,20 @@ async function buscarProductos(keyword) {
 
 /**
  * Muestra los productos en la web (Script base optimizado)
+ * @param {string} keyword - Palabra clave a buscar
+ * @param {string} customContainerId - ID opcional del contenedor
  */
-async function mostrarProductos(keyword) {
+async function mostrarProductos(keyword, customContainerId = null) {
     const productos = await buscarProductos(keyword);
-    renderExternalResults(productos, keyword);
+    renderExternalResults(productos, keyword, customContainerId);
 }
 
 /**
  * Renderiza los productos obtenidos de la API
  */
-function renderExternalResults(products, keyword = "") {
-    // Intentar encontrar el contenedor estándar "productos"
-    let grid = document.getElementById('productos');
+function renderExternalResults(products, keyword = "", customContainerId = null) {
+    // 1. Prioridad: Contenedor personalizado -> Contenedor "productos" -> Contenedor dinámico
+    let grid = customContainerId ? document.getElementById(customContainerId) : document.getElementById('productos');
     let externalSection = document.getElementById('external-results-section');
     const searchInput = document.getElementById('search-input');
     const container = document.querySelector('main .container') || document.body;
