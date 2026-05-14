@@ -56,9 +56,10 @@ export async function onRequest(context) {
         }
 
         // 3. Generar Deep Links e inyectar Tracking ID
+        // Usamos el formato oficial de afiliación por parámetros para asegurar comisiones
         const finalItems = items.map(item => {
-            const separator = item.product_url.includes('?') ? '&' : '?';
-            item.promotion_link = `${item.product_url}${separator}aff_id=${TRACKING_ID}`;
+            const baseUrl = item.product_url.split('?')[0];
+            item.promotion_link = `${baseUrl}?aff_id=${TRACKING_ID}&aff_platform=api-new&sk=domotech_auto&aff_trace_key=domotech_${Date.now()}`;
             return parseAliExpressItem(item);
         });
 

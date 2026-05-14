@@ -211,30 +211,57 @@ async function loadTopSales(basePath) {
     if (!container) return;
 
     try {
-        const categoriesRes = await fetch(`${basePath}data/categorias.json`);
-        const allCategories = await categoriesRes.json();
+        const [categoriesRes, productsRes] = await Promise.all([
+            fetch(`${basePath}data/categorias.json`),
+            fetch(`${basePath}data/productos.json`)
+        ]);
         
-        // Seleccionamos 3 categorías al azar o fijas para mostrar
+        const allCategories = await categoriesRes.json();
+        const localProducts = await productsRes.json();
+        
         const selectedCategories = allCategories.slice(0, 3);
-
         const results = await Promise.all(selectedCategories.map(cat => buscarProductos(cat.keyword)));
         
-        container.innerHTML = selectedCategories.map((cat, idx) => {
-            const product = results[idx]?.[0];
+        let hasContent = false;
+        const html = selectedCategories.map((cat, idx) => {
+            let product = results[idx]?.[0];
+            
+            // Fallback a producto local si la API falla
+            if (!product) {
+                product = localProducts.find(p => p.categoria === cat.slug);
+                if (product) {
+                    // Adaptar formato local al unificado
+                    product = {
+                        id: product.id,
+                        title: product.nombre,
+                        image: product.imagen,
+                        link: formatAffiliateLink(product.enlace, 'domotech2026')
+                    };
+                }
+            }
+
             if (!product) return '';
+            hasContent = true;
+            
             return `
-                <div class="top-sales-item card" style="display: flex; gap: 15px; align-items: center; padding: 15px;">
-                    <div style="width: 80px; height: 80px; flex-shrink: 0; background: #fff; border-radius: 8px; overflow: hidden;">
-                        <img src="${product.image}" style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="top-sales-item card">
+                    <div style="width: 70px; height: 70px; flex-shrink: 0; background: #fff; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        <img src="${product.image}" style="width: 90%; height: 90%; object-fit: contain;" onerror="this.src='https://placehold.co/100x100/1e293b/white?text=Tech'">
                     </div>
-                    <div style="flex-grow: 1;">
-                        <div class="cat-tag" style="font-size: 0.7rem; margin-bottom: 5px;">${cat.nombre}</div>
-                        <h4 style="font-size: 0.9rem; margin-bottom: 5px; height: 2.4em; overflow: hidden;">${product.title}</h4>
-                        <a href="${product.link}" class="btn-link" target="_blank" onclick="trackClick('${product.id}', 'aliexpress')">Más vendido →</a>
+                    <div style="flex-grow: 1; min-width: 0;">
+                        <div class="cat-tag">${cat.nombre}</div>
+                        <h4 style="font-size: 0.85rem; margin-bottom: 5px; height: 2.4em; overflow: hidden; line-height: 1.2;">${product.title}</h4>
+                        <a href="${product.link}" class="btn-link" style="font-size: 0.75rem; margin: 0;" target="_blank" onclick="trackClick('${product.id}', 'top_sales')">Ver oferta →</a>
                     </div>
                 </div>
             `;
         }).join('');
+
+        if (hasContent) {
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">Cargando ofertas...</p>';
+        }
     } catch (error) {
         console.error("Error cargando top ventas:", error);
     }
