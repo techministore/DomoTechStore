@@ -123,81 +123,104 @@ function fixLinks(basePath) {
 }
 
 /**
- * Carga productos destacados desde el JSON (Optimizado con AliExpress API)
- */
-function loadFeatured(basePath) {
-    // Primero intentamos cargar desde el JSON local (con fotos)
-    renderProductGrid('productos-destacados', `${basePath}data/productos.json`, p => p.destacado, 4);
-}
-
-/**
  * Carga Ofertas del Día (Optimizado con AliExpress API)
  */
-function loadDailyOffers(basePath) {
-    // Si queremos que las ofertas sean 100% dinámicas de la API:
-    const initialKeywords = ["smart home", "gadgets", "wifi switch", "security camera"];
-    const randomKeyword = initialKeywords[Math.floor(Math.random() * initialKeywords.length)];
-    
-    // Si existe la función de búsqueda de la API, la usamos para las ofertas
-    if (typeof buscarProductos === 'function') {
-        buscarProductos(randomKeyword).then(products => {
-            const container = document.getElementById('ofertas-dia');
-            if (container && products.length > 0) {
-                container.innerHTML = products.slice(0, 4).map(p => `
-                    <article class="card product-card">
-                        <div class="urgency-badge">🔥 OFERTA FLASH</div>
-                        <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
-                            <img src="${p.image_url}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
-                        </div>
-                        <h3 style="font-size: 1rem; height: 3em; overflow: hidden; margin-bottom: 10px;">${p.title}</h3>
-                        <div class="price-container">
-                            <span class="old-price">${(parseFloat(p.sale_price || p.price) * 1.3).toFixed(2)}€</span>
-                            <span class="current-price">${p.sale_price || p.price}€</span>
-                        </div>
-                        <a href="${formatAffiliateLink(p.product_url, 'domotech2026')}" class="btn-aliexpress" target="_blank">¡Comprar ya! →</a>
-                    </article>
-                `).join('');
-            } else {
-                renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
-            }
-        });
-    } else {
+async function loadDailyOffers(basePath) {
+    const container = document.getElementById('ofertas-dia');
+    if (!container) return;
+
+    try {
+        // Usamos una keyword potente para ofertas
+        const products = await buscarProductos("super deals smart home");
+        if (products && products.length > 0) {
+            container.innerHTML = products.slice(0, 4).map(p => `
+                <article class="card product-card">
+                    <div class="urgency-badge">⚡ OFERTA FLASH</div>
+                    <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
+                        <img src="${p.image || p.image_url || 'assets/img/placeholder-tech.jpg'}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3 style="font-size: 1rem; height: 2.5em; overflow: hidden;">${p.title}</h3>
+                    <div class="price-container">
+                        <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
+                        <span class="current-price">${p.price}€</span>
+                    </div>
+                    <a href="${formatAffiliateLink(p.link || p.product_url, 'domotech2026')}" class="btn-aliexpress" target="_blank">Comprar Ahora →</a>
+                </article>
+            `).join('');
+        } else {
+            renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
+        }
+    } catch (error) {
+        console.error("Error cargando ofertas API:", error);
         renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
+     }
+ }
+
+/**
+ * Carga productos destacados (Automatizado)
+ */
+async function loadFeatured(basePath) {
+    const container = document.getElementById('productos-destacados');
+    if (!container) return;
+
+    try {
+        const products = await buscarProductos("top rated smart home gadgets");
+        if (products && products.length > 0) {
+            container.innerHTML = products.slice(0, 4).map(p => `
+                <article class="card product-card">
+                    <div class="product-image-container" style="height: 180px; overflow: hidden; border-radius: 12px; margin-bottom: 15px; background: #fff;">
+                        <img src="${p.image || p.image_url || 'assets/img/placeholder-tech.jpg'}" alt="${p.title}" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3 style="font-size: 1rem; height: 2.5em; overflow: hidden;">${p.title}</h3>
+                    <div class="price-container">
+                        <span class="current-price">${p.price}€</span>
+                    </div>
+                    <a href="${formatAffiliateLink(p.link || p.product_url, 'domotech2026')}" class="btn-aliexpress" target="_blank">Ver Detalles →</a>
+                </article>
+            `).join('');
+        } else {
+            renderProductGrid('productos-destacados', `${basePath}data/productos.json`, p => p.destacado, 4);
+        }
+    } catch (error) {
+        renderProductGrid('productos-destacados', `${basePath}data/productos.json`, p => p.destacado, 4);
     }
 }
 
 /**
- * Carga Top Ventas por Categoría
+ * Carga Top Ventas (Categorías Automáticas)
  */
-function loadTopSales(basePath) {
+async function loadTopSales(basePath) {
     const container = document.getElementById('top-ventas-categorias');
     if (!container) return;
 
-    Promise.all([
-        fetch(`${basePath}data/productos.json`).then(r => r.json()),
-        fetch(`${basePath}data/categorias.json`).then(r => r.json())
-    ]).then(([productos, categorias]) => {
-        const topSalesMarkup = categorias.map(cat => {
-            const topProduct = productos
-                .filter(p => p.categoria === cat.slug)
-                .sort((a, b) => b.ventas - a.ventas)[0];
-            
-            if (!topProduct) return '';
+    const categories = [
+        { name: "Cámaras", keyword: "security camera wifi" },
+        { name: "Enchufes", keyword: "smart plug tuya" },
+        { name: "Iluminación", keyword: "rgb bulb alexa" }
+    ];
 
+    try {
+        const results = await Promise.all(categories.map(cat => buscarProductos(cat.keyword)));
+        
+        container.innerHTML = categories.map((cat, idx) => {
+            const product = results[idx]?.[0];
+            if (!product) return '';
             return `
-                <div class="top-sales-item">
-                    <div class="cat-tag">${cat.nombre}</div>
-                    <div class="product-image-mini" style="height: 100px; overflow: hidden; margin-bottom: 10px; background: #fff; border-radius: 8px;">
-                        <img src="${topProduct.imagen || topProduct.image_url || 'assets/img/placeholder-tech.jpg'}" alt="${topProduct.nombre}" style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="top-sales-item card" style="display: flex; gap: 15px; align-items: center; padding: 15px;">
+                    <div style="width: 80px; height: 80px; flex-shrink: 0; background: #fff; border-radius: 8px; overflow: hidden;">
+                        <img src="${product.image || product.image_url}" style="width: 100%; height: 100%; object-fit: contain;">
                     </div>
-                    <h4>${topProduct.nombre}</h4>
-                    <div class="sales-badge">🔥 +${topProduct.ventas} vendidos</div>
-                    <a href="${topProduct.enlace}${topProduct.enlace.includes('?') ? '&' : '?'}aff_id=domotech2026" class="btn-link" target="_blank">Ver oferta →</a>
+                    <div style="flex-grow: 1;">
+                        <div class="cat-tag" style="font-size: 0.7rem; margin-bottom: 5px;">${cat.name}</div>
+                        <h4 style="font-size: 0.9rem; margin-bottom: 5px; height: 2.4em; overflow: hidden;">${product.title}</h4>
+                        <a href="${formatAffiliateLink(product.link || product.product_url, 'domotech2026')}" class="btn-link" target="_blank">Más vendido →</a>
+                    </div>
                 </div>
             `;
         }).join('');
-        container.innerHTML = topSalesMarkup;
-    });
+    } catch (error) {
+        console.error("Error cargando top ventas:", error);
+    }
 }
 
 /**
