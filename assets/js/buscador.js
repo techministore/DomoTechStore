@@ -68,13 +68,46 @@ function filterLocalItems(searchTerm) {
 }
 
 /**
- * Muestra los productos en la web (Script base optimizado)
+ * Muestra los productos en la web (Con Loading Skeletons y Optimización)
  * @param {string} keyword - Palabra clave a buscar
  * @param {string} customContainerId - ID opcional del contenedor
  */
 async function mostrarProductos(keyword, customContainerId = null) {
+    if (!keyword) return;
+
+    // 1. Mostrar Skeletons antes de la carga
+    renderSkeletons(keyword, customContainerId);
+
+    // 2. Obtener productos (buscarProductos ya maneja el caché)
     const productos = await buscarProductos(keyword);
+    
+    // 3. Renderizar resultados finales
     renderExternalResults(productos, keyword, customContainerId);
+}
+
+/**
+ * Renderiza Loading Skeletons para mejorar el UX
+ */
+function renderSkeletons(keyword, customContainerId = null) {
+    let grid = customContainerId ? document.getElementById(customContainerId) : document.getElementById('productos');
+    if (!grid) {
+        // Si no hay grid, forzamos la creación de la sección externa
+        renderExternalResults([], keyword, customContainerId);
+        grid = document.getElementById('external-grid');
+    }
+
+    if (!grid) return;
+
+    const skeletons = Array(4).fill(0).map(() => `
+        <article class="card product-card skeleton-card" style="opacity: 0.6; pointer-events: none;">
+            <div class="skeleton-image" style="height: 200px; background: #2a3441; border-radius: 12px; margin-bottom: 15px; animation: pulse 1.5s infinite ease-in-out;"></div>
+            <div class="skeleton-title" style="height: 20px; background: #2a3441; border-radius: 4px; margin-bottom: 10px; width: 80%; animation: pulse 1.5s infinite ease-in-out 0.2s;"></div>
+            <div class="skeleton-price" style="height: 25px; background: #2a3441; border-radius: 4px; width: 40%; animation: pulse 1.5s infinite ease-in-out 0.4s;"></div>
+            <div class="skeleton-btn" style="height: 40px; background: #2a3441; border-radius: 8px; margin-top: 15px; animation: pulse 1.5s infinite ease-in-out 0.6s;"></div>
+        </article>
+    `).join('');
+
+    grid.innerHTML = skeletons;
 }
 
 /**

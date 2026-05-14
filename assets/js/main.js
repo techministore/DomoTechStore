@@ -359,17 +359,47 @@ function injectProductSchema(products) {
 }
 
 /**
- * Función global para buscar en AliExpress vía API
+ * Función global para buscar en AliExpress vía API (Con Caché y Optimización)
  */
 async function buscarProductos(keyword) {
+    if (!keyword) return [];
+    const cacheKey = `search_${keyword.toLowerCase().trim().replace(/\s+/g, '_')}`;
+    const CACHE_TIME = 1000 * 60 * 60; // 1 hora de caché
+
+    // 1. Intentar obtener de la caché (localStorage)
+    try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            if (Date.now() - timestamp < CACHE_TIME) {
+                console.log(`Cargando "${keyword}" desde caché...`);
+                return data;
+            }
+        }
+    } catch (e) {
+        console.warn("Error leyendo caché:", e);
+    }
+
+    // 2. Si no hay caché o ha expirado, llamar a la API
     const endpoint = "/api/aliexpress";
     
     try {
         const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error("Error en la respuesta de la API");
+        
         const data = await res.json();
-        return (data.result && data.result.items) || [];
+        const items = (data.result && data.result.items) || [];
+
+        // 3. Guardar en caché si hay resultados
+        if (items.length > 0) {
+            localStorage.setItem(cacheKey, JSON.stringify({
+                data: items,
+                timestamp: Date.now()
+            }));
+        }
+
+        return items;
     } catch (error) {
         console.error("Error en AliExpress Function:", error);
         return [];
