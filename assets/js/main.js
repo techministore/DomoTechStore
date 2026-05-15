@@ -4,47 +4,80 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Determinar la ruta base para archivos en subcarpetas
+    // 1. Detectar si estamos en una subcarpeta para ajustar las rutas relativas
+    // Cloudflare Pages puede tener rutas limpias (/comparativas/algo) o con .html
     const isSubfolder = window.location.pathname.includes('/categorias/') || window.location.pathname.includes('/comparativas/');
     const basePath = isSubfolder ? '../' : '';
 
-    // 1. Cargar Header
-    loadComponent('header-placeholder', `${basePath}includes/header.html`, () => {
-        // Una vez cargado el header, cargar el menú dentro del header
-        loadComponent('menu-placeholder', `${basePath}includes/menu.html`, () => {
+    // Usamos rutas absolutas desde la raíz para los componentes principales
+    const rootPath = '/';
+
+    // 2. Cargar Header y Footer (Componentes reutilizables)
+    loadComponent('header-placeholder', `${rootPath}includes/header.html`, () => {
+        // Cargar el menú dentro del header una vez que este existe
+        loadComponent('menu-placeholder', `${rootPath}includes/menu.html`, () => {
             setupMobileMenu();
-            if (isSubfolder) fixLinks(basePath);
+            fixLinks(rootPath); // Aseguramos que los links del header y menú sean absolutos
         });
     });
-
-    // 2. Cargar Footer
-    loadComponent('footer-placeholder', `${basePath}includes/footer.html`, () => {
-        if (isSubfolder) fixLinks(basePath);
+    loadComponent('footer-placeholder', `${rootPath}includes/footer.html`, () => {
+        fixLinks(rootPath);
     });
 
-    // 3. Cargar Productos Destacados (solo en index)
-    if (document.getElementById('productos-destacados')) {
-        loadFeatured(basePath);
-    }
+    // 3. SEO dinámico
+    generateSEO(rootPath);
 
-    // 4. Cargar Ofertas del Día
-    if (document.getElementById('ofertas-dia')) {
-        loadDailyOffers(basePath);
-    }
+    // 4. Cargar datos dinámicos según la página
+    loadDailyOffers(rootPath);
+    loadFeatured(rootPath);
+    loadTopSales(rootPath);
 
-    // 5. Cargar Top Ventas por Categoría
-    if (document.getElementById('top-ventas-categorias')) {
-        loadTopSales(basePath);
-    }
+    // 5. Automatizar enlaces vacíos en guías estáticas
+    fixEmptyLinks();
 
-    // 6. Cargar Comparativas Automáticas
-    if (document.getElementById('comparativa-dinamica')) {
-        loadDynamicComparison(basePath);
-    }
-
-    // 7. Generar SEO: Breadcrumbs y JSON-LD
-    generateSEO(basePath);
+    // 6. Diagnóstico de API para el usuario
+    console.log("%c[DomoTech] Sistema Inicializado v2.1", "color: #3b82f6; font-weight: bold; font-size: 1.2rem;");
+    checkApiStatus();
 });
+
+/**
+ * Verifica el estado de la conexión con la API de AliExpress
+ */
+async function checkApiStatus() {
+    try {
+        const res = await fetch("/api/aliexpress?keyword=test");
+        if (res.ok) {
+            console.log("%c[API] Conexión establecida con éxito. AliExpress está operativo.", "color: #4ade80; font-weight: bold;");
+        } else if (res.status === 401) {
+            console.warn("%c[API] Error 401: No autorizado. Verifica las claves ALI_APP_KEY y ALI_APP_SECRET en los Secretos de Cloudflare Pages.", "background: #fef08a; color: #854d0e; padding: 4px; border-radius: 4px;");
+        } else {
+            console.error(`%c[API] Error de conexión: Código ${res.status}`, "color: #f87171;");
+        }
+    } catch (e) {
+        console.error("[API] No se pudo conectar con el backend de Cloudflare Functions.", e);
+    }
+}
+
+/**
+ * Automatiza los enlaces que están vacíos (#) convirtiéndolos en búsquedas con tracking
+ */
+function fixEmptyLinks() {
+    const emptyLinks = document.querySelectorAll('a[href="#"]');
+    emptyLinks.forEach(link => {
+        // Intentar obtener el nombre del producto del encabezado más cercano
+        const card = link.closest('.card') || link.parentElement;
+        const productName = card.querySelector('h2, h3')?.textContent || "smart home";
+        
+        // Limpiar el nombre (quitar números de lista como "1. ")
+        const cleanName = productName.replace(/^\d+\.\s*/, '').trim();
+        
+        // Crear enlace de búsqueda con tracking
+        const trackingId = "domotech_2026";
+        link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
+        link.target = "_blank";
+        link.rel = "nofollow sponsored";
+    });
+}
 
 /**
  * Genera elementos SEO dinámicos como Breadcrumbs y JSON-LD

@@ -74,7 +74,8 @@ export async function onRequest(context) {
 
         // 3. Generar enlaces de seguimiento OFICIALES usando aliexpress.affiliate.link.generate
         if (items.length > 0) {
-            const productUrls = items.map(item => item.product_url).join(',');
+            // Limpiamos las URLs antes de enviarlas a la API de generación de links
+            const productUrls = items.map(item => cleanAliUrl(item.product_url)).join(',');
             
             try {
                 const linkRes = await callAliExpressApi("aliexpress.affiliate.link.generate", {
@@ -94,7 +95,7 @@ export async function onRequest(context) {
                 } else {
                     // Fallback manual si falla la generación oficial (mejor que nada)
                     items = items.map(item => {
-                        const cleanUrl = item.product_url.split('?')[0];
+                        const cleanUrl = cleanAliUrl(item.product_url);
                         item.promotion_link = `${cleanUrl}?aff_id=${TRACKING_ID}&aff_fcid=default`;
                         return parseAliExpressItem(item);
                     });
@@ -103,7 +104,7 @@ export async function onRequest(context) {
                 console.error("Error generando enlaces oficiales:", linkErr);
                 // Fallback manual
                 items = items.map(item => {
-                    const cleanUrl = item.product_url.split('?')[0];
+                    const cleanUrl = cleanAliUrl(item.product_url);
                     item.promotion_link = `${cleanUrl}?aff_id=${TRACKING_ID}&aff_fcid=default`;
                     return parseAliExpressItem(item);
                 });
@@ -120,4 +121,16 @@ export async function onRequest(context) {
             headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
     }
+}
+
+/**
+ * Limpia la URL de AliExpress para asegurar que sea válida para la API de afiliados
+ */
+function cleanAliUrl(url) {
+    if (!url) return "";
+    const match = url.match(/\/item\/(\d+)\.html/);
+    if (match) {
+        return `https://www.aliexpress.com/item/${match[1]}.html`;
+    }
+    return url.split('?')[0];
 }

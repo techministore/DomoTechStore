@@ -58,5 +58,35 @@
         "valoracion": 4.4,
         "descripcion": "Sensores exteriores e interiores con pantalla a color. Un nicho muy rentable y con poca competencia SEO.",
         "imagen": "https://images.unsplash.com/photo-1504328332780-bfbfaf1796b0?auto=format&fit=crop&w=400&h=400&q=80"
+    },
+    {
+        "id": 7,
+        "nombre": "Bombilla Inteligente RGB WiFi Alexa",
+        "categoria": "iluminacion-inteligente",
+        "precio_aproximado": 8.90,
+        "precio_original": 15.00,
+        "enlace": "https://www.aliexpress.com/af/smart-bulb-wifi-rgb.html",
+        "tienda": "AliExpress",
+        "destacado": true,
+        "oferta": true,
+        "ventas": 5000,
+        "valoracion": 4.8,
+        "descripcion": "Millones de colores y luz blanca regulable. Sincronización con música y control por voz.",
+        "imagen": "https://images.unsplash.com/photo-1550524514-9636edec33c1?auto=format&fit=crop&w=400&h=400&q=80"
+    },
+    {
+        "id": 8,
+        "nombre": "Hub Zigbee 3.0 Universal Tuya",
+        "categoria": "controladores-asistentes",
+        "precio_aproximado": 22.50,
+        "precio_original": 35.00,
+        "enlace": "https://www.aliexpress.com/af/zigbee-3.0-hub-tuya.html",
+        "tienda": "AliExpress",
+        "destacado": true,
+        "oferta": false,
+        "ventas": 1500,
+        "valoracion": 4.9,
+        "descripcion": "El cerebro para tus sensores Zigbee. Estable, rápido y compatible con cientos de dispositivos.",
+        "imagen": "https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&h=400&q=80"
     }
 ]
