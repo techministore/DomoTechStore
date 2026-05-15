@@ -68,9 +68,14 @@ export async function onRequest(context) {
                 "aliexpress.affiliate.hotproduct.query",
                 {
                     keywords: keyword,
-                    tracking_id: TRACKING_ID,
-                    platform_product_all: "true",
+                    category_id: "0",
+                    fields: "product_id,product_title,product_main_image_url,target_sale_price,target_original_price,evaluate_rate,last_thirty_days_relevant_shelf_commission,commission_rate,product_detail_url",
+                    target_currency: "EUR",
+                    target_language: "es",
+                    country: "ES",
                     page_size: "20",
+                    platform_product_all: "true",
+                    tracking_id: TRACKING_ID,
                 },
                 env
             );
@@ -100,11 +105,14 @@ export async function onRequest(context) {
                 "aliexpress.affiliate.product.query",
                 {
                     keywords: keyword,
-                    tracking_id: TRACKING_ID,
+                    category_id: "0",
+                    fields: "product_id,product_title,product_main_image_url,target_sale_price,target_original_price,evaluate_rate,last_thirty_days_relevant_shelf_commission,commission_rate,product_detail_url",
+                    target_currency: "EUR",
+                    target_language: "es",
+                    country: "ES",
                     page_size: "20",
                     sort: "LAST_VOLUME_DESC",
-                    min_item_price: '5', // ~5.00 USD/EUR (Evitar morralla extrema)
-                    delivery_days: '10'    // Priorizar envío rápido
+                    tracking_id: TRACKING_ID
                 },
                 env
             );
