@@ -81,8 +81,8 @@ function appendLocalProducts(products, container) {
 }
 
 function renderAutosuficiente(products, container) {
-    if (products.length === 0) {
-        container.innerHTML = `<p class="product-card__no-results">Buscando las mejores ofertas...</p>`;
+    if (!products || products.length === 0) {
+        container.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 40px; opacity: 0.5;">No se han encontrado ofertas disponibles en este momento. Inténtalo de nuevo más tarde.</p>`;
         return;
     }
     container.innerHTML = products.map(p => {

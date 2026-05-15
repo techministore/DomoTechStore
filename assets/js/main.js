@@ -107,17 +107,26 @@ function setupMobileMenu() {
 }
 
 /**
- * Corrige los enlaces cuando estamos en una subcarpeta
+ * Corrige los enlaces e imágenes cuando estamos en una subcarpeta
  */
 function fixLinks(basePath) {
+    // Corregir enlaces
     const links = document.querySelectorAll('a');
     links.forEach(link => {
         const href = link.getAttribute('href');
         if (href && !href.startsWith('http') && !href.startsWith('#')) {
-            // Si el enlace no empieza por la ruta base, se la añadimos
             if (!href.startsWith(basePath)) {
                 link.href = basePath + href;
             }
+        }
+    });
+
+    // Corregir imágenes (como el logo)
+    const images = document.querySelectorAll('img');
+    images.forEach(img => {
+        const src = img.getAttribute('src');
+        if (src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith(basePath)) {
+            img.src = basePath + src;
         }
     });
 }
@@ -438,7 +447,7 @@ async function buscarProductos(keyword, isHot = false) {
 
     // 2. Llamada a la API
     const endpoint = "/api/aliexpress";
-    
+    let items = [];
     try {
         const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}${isHot ? '&hot=true' : ''}`;
         const res = await fetch(url);
@@ -451,21 +460,27 @@ async function buscarProductos(keyword, isHot = false) {
         if (!res.ok) throw new Error(`Error API: ${res.status}`);
         
         const data = await res.json();
-        const items = (data.result && data.result.items) || [];
-
-        // 3. Guardar en caché
-        if (items.length > 0) {
-            localStorage.setItem(cacheKey, JSON.stringify({
-                data: items,
-                timestamp: Date.now()
-            }));
-        }
-
-        return processBestProducts(items);
-    } catch (error) {
-        console.error("Error cargando productos de AliExpress:", error);
-        return [];
+        const result = data.result || data;
+        items = result.items || [];
+    } catch (apiErr) {
+        console.warn("Error en llamada API AliExpress:", apiErr);
     }
+
+    // 3. Fallback: Si pedimos 'hot' y no vino nada, intentar búsqueda normal una vez
+    if (isHot && items.length === 0) {
+        console.log(`No se encontraron Hot Products para "${keyword}", intentando búsqueda normal...`);
+        return await buscarProductos(keyword, false);
+    }
+
+    // 4. Guardar en caché si hay resultados
+    if (items.length > 0) {
+        localStorage.setItem(cacheKey, JSON.stringify({
+            data: items,
+            timestamp: Date.now()
+        }));
+    }
+
+    return processBestProducts(items);
 }
 
 /**
