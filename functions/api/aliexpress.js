@@ -72,19 +72,45 @@ export async function onRequest(context) {
             }
         }
 
-        // 3. Normalizar y generar enlaces de seguimiento oficiales
-        const finalItems = items.map(item => {
-            // Limpiar la URL base para evitar parámetros basura
-            const cleanUrl = item.product_url.split('?')[0];
+        // 3. Generar enlaces de seguimiento OFICIALES usando aliexpress.affiliate.link.generate
+        if (items.length > 0) {
+            const productUrls = items.map(item => item.product_url).join(',');
             
-            // Generar el enlace de afiliado usando el formato que requiere AliExpress Portals para el seguimiento correcto
-            // Usamos aff_fcid=default como fallback de seguridad y aff_id para tu cuenta
-            item.promotion_link = `${cleanUrl}?aff_id=${TRACKING_ID}&aff_fcid=default&aff_platform=portals-tool&sk=domotech_2026`;
-            
-            return parseAliExpressItem(item);
-        });
+            try {
+                const linkRes = await callAliExpressApi("aliexpress.affiliate.link.generate", {
+                    promotion_link_type: '0', // 0 para enlaces de producto
+                    source_values: productUrls,
+                    tracking_id: TRACKING_ID
+                }, env);
 
-        return new Response(JSON.stringify({ result: { items: finalItems } }), {
+                const promotionLinks = linkRes.aliexpress_affiliate_link_generate_response?.resp_result?.result?.promotion_links?.promotion_link;
+                
+                if (promotionLinks && promotionLinks.length > 0) {
+                    items = items.map((item, index) => {
+                        const officialLink = promotionLinks[index]?.promotion_link;
+                        item.promotion_link = officialLink || item.product_url;
+                        return parseAliExpressItem(item);
+                    });
+                } else {
+                    // Fallback manual si falla la generación oficial (mejor que nada)
+                    items = items.map(item => {
+                        const cleanUrl = item.product_url.split('?')[0];
+                        item.promotion_link = `${cleanUrl}?aff_id=${TRACKING_ID}&aff_fcid=default`;
+                        return parseAliExpressItem(item);
+                    });
+                }
+            } catch (linkErr) {
+                console.error("Error generando enlaces oficiales:", linkErr);
+                // Fallback manual
+                items = items.map(item => {
+                    const cleanUrl = item.product_url.split('?')[0];
+                    item.promotion_link = `${cleanUrl}?aff_id=${TRACKING_ID}&aff_fcid=default`;
+                    return parseAliExpressItem(item);
+                });
+            }
+        }
+
+        return new Response(JSON.stringify({ result: { items } }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
 
