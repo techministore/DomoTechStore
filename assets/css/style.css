@@ -204,22 +204,10 @@ a { text-decoration: none; color: inherit; transition: var(--transition); }
     margin-bottom: 10px;
 }
 
-/* ETIQUETA RECOMENDADO (ALTA COMISIÓN) */
-.badge-recommended {
-    background: #facc15 !important; /* Amarillo/Dorado para resaltar */
-    color: #0f172a !important;
-}
-.discount-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: #22c55e;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: bold;
-}
+/* ETIQUETAS DE VALOR (SMART TAGS) */
+.badge-price { background: #22c55e !important; color: white !important; } /* Verde para Mejor Precio */
+.badge-value { background: #3b82f6 !important; color: white !important; } /* Azul para Calidad-Precio */
+.badge-recommended { background: #facc15 !important; color: #0f172a !important; } /* Dorado para Recomendado/Ventas */
 
 .btn-aliexpress {
     display: block;

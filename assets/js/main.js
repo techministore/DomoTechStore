@@ -66,38 +66,39 @@ async function automateProductLinks() {
     const trackingId = "Domotech_2026";
 
     for (const link of emptyLinks) {
-        // 1. Obtener el nombre del producto del contexto
+        // 1. Obtener el nombre del producto o categoría del contexto
         const card = link.closest('.card') || link.parentElement;
-        const productName = card.querySelector('h2, h3')?.textContent || "smart home";
-        const cleanName = productName.replace(/^\d+\.\s*/, '').trim();
+        
+        // Si es una "clickable-info-card", usamos el texto descriptivo para una búsqueda más precisa
+        const isInfoCard = link.classList.contains('clickable-info-card');
+        const productName = isInfoCard 
+            ? card.querySelector('p')?.textContent 
+            : card.querySelector('h2, h3')?.textContent;
+            
+        const cleanName = (productName || "smart home").replace(/^\d+\.\s*/, '').trim();
 
-        // 2. Fallback inmediato (Búsqueda) por si la API tarda o falla
+        // 2. Fallback inmediato (Búsqueda)
         link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
         link.target = "_blank";
         link.rel = "nofollow sponsored";
 
-        // 3. Intentar mejorar el enlace con un "Match" directo de la API
-        try {
-            // Buscamos el producto específico
-            const products = await buscarProductos(cleanName, true); 
-            if (products && products.length > 0) {
-                // El primer producto devuelto ya está ordenado por "Mejor Opción" en buscarProductos/processBestProducts
-                const bestMatch = products[0];
-                
-                // Actualizamos el enlace a la URL de promoción directa del producto
-                link.href = bestMatch.link;
-                
-                // Opcional: Añadir un tooltip o aviso de que es la mejor oferta
-                link.title = `Mejor oferta encontrada: ${bestMatch.price}€`;
-                
-                // Si estamos en una card estática, podemos incluso actualizar el precio dinámicamente si existe un lugar
-                const priceEl = card.querySelector('.current-price');
-                if (priceEl && !priceEl.textContent.includes('€')) {
-                    priceEl.textContent = `${bestMatch.price}€`;
+        // 3. Si no es una info-card (que busca listados), intentamos match directo de producto
+        if (!isInfoCard) {
+            try {
+                const products = await buscarProductos(cleanName, true); 
+                if (products && products.length > 0) {
+                    const bestMatch = products[0];
+                    link.href = bestMatch.link;
+                    link.title = `Mejor oferta encontrada: ${bestMatch.price}€`;
+                    
+                    const priceEl = card.querySelector('.current-price');
+                    if (priceEl && !priceEl.textContent.includes('€')) {
+                        priceEl.textContent = `${bestMatch.price}€`;
+                    }
                 }
+            } catch (err) {
+                console.warn(`No se pudo encontrar match directo para "${cleanName}"`);
             }
-        } catch (err) {
-            console.warn(`No se pudo encontrar match directo para "${cleanName}", se mantiene enlace de búsqueda.`);
         }
     }
 }
@@ -195,18 +196,13 @@ async function loadDailyOffers(basePath) {
     if (!container) return;
 
     try {
-        const categoriesRes = await fetch(`${basePath}data/categorias.json`);
-        const allCategories = await categoriesRes.json();
+        // Buscamos productos con el tag "hot sale" y "smart home" para traer lo mejor de AliExpress
+        const keyword = "smart home super deals";
+        console.log(`%c[DomoTech] Cargando Top Ofertas Reales de AliExpress...`, "color: #facc15");
         
-        // Rotación de keywords para ofertas frescas: Mezcla de genéricas y categorías
-        const offerKeywords = ["flash deals", "hot sale", "best price", "discount smart home"];
-        const randomCategory = allCategories[Math.floor(Math.random() * allCategories.length)];
-        offerKeywords.push(randomCategory.keyword);
-        
-        const keyword = offerKeywords[Math.floor(Math.random() * offerKeywords.length)];
-        
-        const products = await buscarProductos(keyword, true); // Forzar Hot Products para ofertas
+        const products = await buscarProductos(keyword, true); 
         if (products && products.length > 0) {
+            // Mostramos los 4 mejores según la API (ordenados por relevancia/ventas en processBestProducts)
             container.innerHTML = products.slice(0, 4).map(p => {
                 const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
                 return `
@@ -243,12 +239,12 @@ async function loadFeatured(basePath) {
     if (!container) return;
 
     try {
-        const categoriesRes = await fetch(`${basePath}data/categorias.json`);
-        const allCategories = await categoriesRes.json();
-        const randomCategory = allCategories[Math.floor(Math.random() * allCategories.length)];
+        // Traemos lo mejor de lo mejor (best sellers reales)
+        const keyword = "top rated smart home gadgets";
 
-        const products = await buscarProductos(`best ${randomCategory.keyword}`, true); // Productos destacados con alta comisión
+        const products = await buscarProductos(keyword, true); 
         if (products && products.length > 0) {
+            // Mostramos los productos reales por ranking de la API
             container.innerHTML = products.slice(0, 4).map(p => {
                 const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
                 return `
@@ -282,35 +278,18 @@ async function loadTopSales(basePath) {
     if (!container) return;
 
     try {
-        const [categoriesRes, productsRes] = await Promise.all([
-            fetch(`${basePath}data/categorias.json`),
-            fetch(`${basePath}data/productos.json`)
-        ]);
-        
+        const categoriesRes = await fetch(`${basePath}data/categorias.json`);
         const allCategories = await categoriesRes.json();
-        const localProducts = await productsRes.json();
         
+        // Usamos las primeras 3 categorías principales para mostrar sus top ventas REALES
         const selectedCategories = allCategories.slice(0, 3);
-        const results = await Promise.all(selectedCategories.map(cat => buscarProductos(cat.keyword, true))); // Top ventas con alta comisión
+        const results = await Promise.all(selectedCategories.map(cat => buscarProductos(cat.keyword, true))); 
         
         let hasContent = false;
         const html = selectedCategories.map((cat, idx) => {
+            // El primer resultado de buscarProductos para cada categoría es el Top Venta real
             let product = results[idx]?.[0];
             
-            // Fallback a producto local si la API falla
-            if (!product) {
-                product = localProducts.find(p => p.categoria === cat.slug);
-                if (product) {
-                    // Adaptar formato local al unificado
-                    product = {
-                        id: product.id,
-                        title: product.nombre,
-                        image: product.imagen,
-                        link: formatAffiliateLink(product.enlace, 'domotech2026')
-                    };
-                }
-            }
-
             if (!product) return '';
             hasContent = true;
             
@@ -322,7 +301,7 @@ async function loadTopSales(basePath) {
                     <div style="flex-grow: 1; min-width: 0;">
                         <div class="cat-tag">${cat.nombre}</div>
                         <h4 style="font-size: 0.85rem; margin-bottom: 5px; height: 2.4em; overflow: hidden; line-height: 1.2;">${product.title}</h4>
-                        <a href="${product.link}" class="btn-link" style="font-size: 0.75rem; margin: 0;" target="_blank" onclick="trackClick('${product.id}', 'top_sales')">Ver oferta →</a>
+                        <a href="${product.link}" class="btn-link" style="font-size: 0.75rem; margin: 0;" target="_blank" onclick="trackClick('${product.id}', 'top_sales')">Ver Top Venta →</a>
                     </div>
                 </div>
             `;
@@ -331,10 +310,10 @@ async function loadTopSales(basePath) {
         if (hasContent) {
             container.innerHTML = html;
         } else {
-            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">Cargando ofertas...</p>';
+            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">Sincronizando con AliExpress...</p>';
         }
     } catch (error) {
-        console.error("Error cargando top ventas:", error);
+        console.error("Error cargando top ventas reales:", error);
     }
 }
 
@@ -488,7 +467,7 @@ function injectProductSchema(products) {
 async function buscarProductos(keyword, isHot = false) {
     if (!keyword) return [];
     const cacheKey = `search_${keyword.toLowerCase().trim().replace(/\s+/g, '_')}${isHot ? '_hot' : ''}`;
-    const CACHE_TIME = 1000 * 60 * 60; // 1 hora de caché
+    const CACHE_TIME = 1000 * 60 * 15; // Reducido a 15 minutos para mayor frescura (antes 1 hora)
 
     // 1. Intentar obtener de la caché (localStorage)
     try {
@@ -545,33 +524,40 @@ async function buscarProductos(keyword, isHot = false) {
 }
 
 /**
- * Procesa una lista de productos para marcar los "Mejores" según criterios
+ * Procesa una lista de productos para marcar los "Mejores" según criterios reales de AliExpress
  */
 function processBestProducts(products) {
     if (!products || products.length === 0) return [];
 
-    // 1. Identificar el más barato
-    const cheapest = [...products].sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
-    
-    // 2. Identificar el más vendido (si tiene ventas)
-    const topSales = [...products].sort((a, b) => (b.sales || 0) - (a.sales || 0))[0];
-    
-    // 3. Identificar el mejor valorado (si tiene rating)
-    const topRated = [...products].filter(p => p.rating).sort((a, b) => b.rating - a.rating)[0];
-    
-    // 4. Identificar el de mayor comisión o "Hot Product" (Simulado si no hay dato real)
-    const recommended = [...products].sort((a, b) => {
-        // Si hay dato de comisión real, usarlo. Si no, priorizar rating + ventas
-        const valA = (a.commission || 0) * 100 + (a.rating || 0) * 10 + (a.sales || 0) / 100;
-        const valB = (b.commission || 0) * 100 + (b.rating || 0) * 10 + (b.sales || 0) / 100;
-        return valB - valA;
-    })[0];
+    // 1. Ordenar por "Calidad" (Rating + Ventas) para tener una base de confianza
+    const sortedByQuality = [...products].sort((a, b) => {
+        const scoreA = (parseFloat(a.rating) || 0) * 10 + (parseInt(a.sales) || 0) / 100;
+        const scoreB = (parseFloat(b.rating) || 0) * 10 + (parseInt(b.sales) || 0) / 100;
+        return scoreB - scoreA;
+    });
 
-    return products.map(p => {
-        if (p.id === recommended.id && (p.commission || p.rating >= 4.8)) p.tag = "RECOMENDADO";
-        else if (p.id === cheapest.id) p.tag = "PRECIO MÁS BAJO";
-        else if (topSales && p.id === topSales.id && p.sales > 100) p.tag = "MÁS VENDIDO";
-        else if (topRated && p.id === topRated.id && p.rating >= 4.5) p.tag = "MEJOR VALORADO";
+    // 2. Identificar el de Mejor Precio (el más barato de entre los que tienen buen rating)
+    const cheapest = [...products]
+        .filter(p => (parseFloat(p.rating) || 0) >= 4.2) // Filtro mínimo de calidad para el barato
+        .sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
+    
+    // 3. Identificar Calidad-Precio (el que tiene mejor relación Rating/Precio)
+    const bestValue = [...products]
+        .filter(p => (parseInt(p.sales) || 0) > 50) // Que tenga algunas ventas
+        .sort((a, b) => {
+            const ratioA = (parseFloat(a.rating) || 0) / parseFloat(a.price);
+            const ratioB = (parseFloat(b.rating) || 0) / parseFloat(b.price);
+            return ratioB - ratioA;
+        })[0];
+    
+    // 4. Identificar el Top Ventas (Popularidad pura)
+    const topSales = [...products].sort((a, b) => (parseInt(b.sales) || 0) - (parseInt(a.sales) || 0))[0];
+
+    return sortedByQuality.map(p => {
+        if (cheapest && p.id === cheapest.id) p.tag = "MEJOR PRECIO";
+        else if (bestValue && p.id === bestValue.id) p.tag = "CALIDAD-PRECIO";
+        else if (topSales && p.id === topSales.id) p.tag = "MÁS VENDIDO";
+        else if ((parseFloat(p.rating) || 0) >= 4.8) p.tag = "RECOMENDADO";
         return p;
     });
 }

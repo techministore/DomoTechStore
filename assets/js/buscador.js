@@ -160,10 +160,14 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
     }
 
     grid.innerHTML = products.map(p => {
-        const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
+        let badgeClass = "badge";
+        if (p.tag === "MEJOR PRECIO") badgeClass = "badge badge-price";
+        else if (p.tag === "CALIDAD-PRECIO") badgeClass = "badge badge-value";
+        else if (p.tag === "RECOMENDADO" || p.tag === "MÁS VENDIDO") badgeClass = "badge badge-recommended";
+
         return `
-            <article class="card product-card">
-                ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
+            <article class="card product-card" style="position: relative;">
+                ${p.tag ? `<div class="${badgeClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                 <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
                 <div class="product-image-container">
                     <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=AliExpress'">
