@@ -3,6 +3,7 @@
  */
 export function parseAliExpressItem(item) {
     const finalPrice = item.sale_price || item.price;
+    const oldPrice = item.original_price || item.old_price || null;
     const finalImage = item.image_url || item.product_main_image_url || item.image || item.product_small_image_urls?.[0];
     const finalLink = item.promotion_link || item.product_url || item.link;
 
@@ -10,6 +11,7 @@ export function parseAliExpressItem(item) {
         id: item.item_id || item.id,
         title: item.title,
         price: finalPrice,
+        old_price: oldPrice,
         image: finalImage,
         link: finalLink,
         shop: "AliExpress",

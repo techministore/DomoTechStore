@@ -18,7 +18,7 @@ export async function onRequest(context) {
 
     // CONFIGURACIÓN (Usando tu variable secreta de Cloudflare)
     const RAPIDAPI_KEY = env.RAPIDAPI_KEY;
-    const TRACKING_ID = "domotech2026";
+    const TRACKING_ID = "Domotech_2026";
 
     if (!RAPIDAPI_KEY) {
         return new Response(JSON.stringify({ error: "Falta RAPIDAPI_KEY en la configuración de Cloudflare" }), {

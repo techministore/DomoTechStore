@@ -8,20 +8,35 @@ import { callAliExpressApi } from "../utils/aliApi.js";
 function cleanAliUrl(url) {
     if (!url) return "";
     
-    // 1) Si ya es una URL de producto, la dejamos limpia
-    const match = url.match(/\/item\/(\d+)\.html/);
-    if (match) {
-        return `https://www.aliexpress.com/item/${match[1]}.html`;
-    }
-
-    // 2) Si viene desde búsqueda con _object_id
-    const idMatch = url.match(/_object_id%3A(\d+)/) || url.match(/_object_id=(\d+)/);
-    if (idMatch) {
+    // 1) Soporte para URLs acortadas o redirecciones (intentamos extraer el ID si está presente)
+    const idMatch = url.match(/\/item\/(\d+)\.html/) || 
+                    url.match(/_object_id%3A(\d+)/) || 
+                    url.match(/_object_id=(\d+)/) ||
+                    url.match(/[?&]productId=(\d+)/);
+                    
+    if (idMatch && idMatch[1]) {
         return `https://www.aliexpress.com/item/${idMatch[1]}.html`;
     }
 
-    // 3) Último recurso: quitar parámetros
-    return url.split("?")[0];
+    // 2) Si es una URL de s.click.aliexpress.com o similar, no podemos limpiarla fácilmente sin fetch
+    if (url.includes('s.click.aliexpress.com')) return url;
+
+    // 3) Último recurso: quitar parámetros de tracking pero mantener la base
+    try {
+        const urlObj = new URL(url);
+        return `${urlObj.origin}${urlObj.pathname}`;
+    } catch (e) {
+        return url.split("?")[0];
+    }
+}
+
+/**
+ * Añade parámetros de tracking a una URL de AliExpress de forma segura
+ */
+function appendTrackingParams(url, trackingId) {
+    if (!url) return "";
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
 }
 
 /**
@@ -39,7 +54,8 @@ export async function onRequest(context) {
     const keyword = url.searchParams.get("keyword") || "smart home";
     const isHot = url.searchParams.get("hot") === "true";
 
-    const TRACKING_ID = "Domotech_2026";
+    // Priorizar Tracking ID de entorno, fallback al hardcoded
+    const TRACKING_ID = env.ALI_TRACKING_ID || "Domotech_2026";
 
     console.log(`%c[ALIEXPRESS API] Buscando: ${keyword}...`, "color: #4ea1ff; font-weight: bold;");
 
@@ -66,6 +82,8 @@ export async function onRequest(context) {
                     item_id: p.product_id,
                     title: p.product_title,
                     price: p.target_sale_price || p.target_original_price,
+                    sale_price: p.target_sale_price,
+                    original_price: p.target_original_price,
                     image_url: p.product_main_image_url,
                     product_url: cleanAliUrl(p.promotion_link || p.product_detail_url),
                     rating: p.evaluate_rate,
@@ -85,7 +103,7 @@ export async function onRequest(context) {
                     tracking_id: TRACKING_ID,
                     page_size: "20",
                     sort: "LAST_VOLUME_DESC",
-                    min_item_price: '300', // Evitar morralla (centavos)
+                    min_item_price: '5', // ~5.00 USD/EUR (Evitar morralla extrema)
                     delivery_days: '10'    // Priorizar envío rápido
                 },
                 env
@@ -101,6 +119,8 @@ export async function onRequest(context) {
                         item_id: p.product_id,
                         title: p.product_title,
                         price: p.target_sale_price || p.target_original_price,
+                        sale_price: p.target_sale_price,
+                        original_price: p.target_original_price,
                         image_url: p.product_main_image_url,
                         product_url: cleanAliUrl(p.product_detail_url),
                         rating: p.evaluate_rate,
@@ -127,25 +147,16 @@ export async function onRequest(context) {
 
                 const promotionLinks = linkRes.aliexpress_affiliate_link_generate_response?.resp_result?.result?.promotion_links?.promotion_link;
 
-                if (promotionLinks && promotionLinks.length > 0) {
-                    items = items.map((item, index) => {
-                        const officialLink = promotionLinks[index]?.promotion_link;
-                        item.promotion_link = officialLink || item.product_url;
-                        return parseAliExpressItem(item);
-                    });
-                } else {
-                    // Fallback con parámetros manuales de Portals
-                    items = items.map((item) => {
-                        const cleanUrl = item.product_url;
-                        item.promotion_link = `${cleanUrl}?aff_id=${TRACKING_ID}&aff_fcid=default&aff_platform=portals-tool&sk=${TRACKING_ID}`;
-                        return parseAliExpressItem(item);
-                    });
-                }
+                items = items.map((item, index) => {
+                    const officialLink = promotionLinks?.[index]?.promotion_link;
+                    // Si no hay link oficial, usamos fallback manual
+                    item.promotion_link = officialLink || appendTrackingParams(item.product_url, TRACKING_ID);
+                    return parseAliExpressItem(item);
+                });
             } catch (err) {
                 console.error("Error generando enlaces oficiales:", err);
                 items = items.map((item) => {
-                    const cleanUrl = item.product_url;
-                    item.promotion_link = `${cleanUrl}?aff_id=${TRACKING_ID}&aff_fcid=default&aff_platform=portals-tool&sk=${TRACKING_ID}`;
+                    item.promotion_link = appendTrackingParams(item.product_url, TRACKING_ID);
                     return parseAliExpressItem(item);
                 });
             }

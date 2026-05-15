@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     generateSEO(rootPath);
 
     // 4. Cargar datos dinámicos según la página
-    loadDailyOffers(rootPath);
+    mostrarProductos("smart home", "ofertas-dia");
     loadFeatured(rootPath);
     loadTopSales(rootPath);
 
@@ -189,32 +189,45 @@ function fixLinks(basePath) {
 }
 
 /**
- * Carga Ofertas del Día (Optimizado con AliExpress API y Rotación)
+ * Función principal para mostrar productos dinámicos en cualquier contenedor
+ * Conecta el frontend con la API de AliExpress
  */
-async function loadDailyOffers(basePath) {
-    const container = document.getElementById('ofertas-dia');
+async function mostrarProductos(keyword, containerId) {
+    const container = document.getElementById(containerId);
     if (!container) return;
 
+    // 1. Mostrar esqueletos de carga (UX mejorada)
+    container.innerHTML = Array(4).fill(0).map(() => `
+        <article class="card product-card skeleton-card">
+            <div style="height: 180px; background: #2a3441; border-radius: 12px; margin-bottom: 15px; animation: pulse 1.5s infinite;"></div>
+            <div style="height: 20px; background: #2a3441; border-radius: 4px; width: 80%; animation: pulse 1.5s infinite 0.2s;"></div>
+            <div style="height: 40px; background: #2a3441; border-radius: 8px; margin-top: 20px; animation: pulse 1.5s infinite 0.4s;"></div>
+        </article>
+    `).join('');
+
     try {
-        // Buscamos productos con el tag "hot sale" y "smart home" para traer lo mejor de AliExpress
-        const keyword = "smart home super deals";
-        console.log(`%c[DomoTech] Cargando Top Ofertas Reales de AliExpress...`, "color: #facc15");
+        console.log(`%c[DomoTech] Buscando "${keyword}" para el contenedor #${containerId}...`, "color: #facc15");
         
+        // 2. Llamada a la API (buscarProductos ya maneja caché y proceso de tags)
         const products = await buscarProductos(keyword, true); 
+        
         if (products && products.length > 0) {
-            // Mostramos los 4 mejores según la API (ordenados por relevancia/ventas en processBestProducts)
+            // 3. Renderizar productos reales de AliExpress
             container.innerHTML = products.slice(0, 4).map(p => {
                 const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
+                const hasOldPrice = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
+                const oldPriceHtml = hasOldPrice ? `<span class="old-price">${p.old_price}€</span>` : '';
+
                 return `
                 <article class="card product-card" style="position: relative;">
                     ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
-                    <div class="urgency-badge">⚡ ¡SUPER OFERTA!</div>
+                    <div class="urgency-badge">⚡ ¡OFERTA REAL!</div>
                     <div class="product-image-container">
                         <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
                     </div>
                     <h3>${p.title}</h3>
                     <div class="price-container">
-                        <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
+                        ${oldPriceHtml}
                         <span class="current-price">${p.price}€</span>
                     </div>
                     ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
@@ -223,11 +236,11 @@ async function loadDailyOffers(basePath) {
                 `;
             }).join('');
         } else {
-            renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
+            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5; padding: 40px;">No hay ofertas disponibles para esta búsqueda en este momento.</p>';
         }
     } catch (error) {
-        console.error("Error cargando ofertas API:", error);
-        renderProductGrid('ofertas-dia', `${basePath}data/productos.json`, p => p.oferta, 4, true);
+        console.error("Error en mostrarProductos:", error);
+        container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ff4747; padding: 40px;">Error al conectar con AliExpress. Inténtalo de nuevo más tarde.</p>';
     }
 }
 
@@ -351,7 +364,7 @@ function loadDynamicComparison(basePath) {
                                     <td><strong>${p.nombre}</strong></td>
                                     <td>~${p.precio_aproximado}€</td>
                                     <td>⭐ ${p.valoracion}/5</td>
-                                    <td><a href="${formatAffiliateLink(p.enlace, 'domotech2026')}" class="btn-aliexpress" style="padding: 8px 15px; font-size: 0.8rem; margin: 0;" target="_blank">Comprar →</a></td>
+                                    <td><a href="${formatAffiliateLink(p.enlace, 'Domotech_2026')}" class="btn-aliexpress" style="padding: 8px 15px; font-size: 0.8rem; margin: 0;" target="_blank">Comprar →</a></td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -368,7 +381,7 @@ function loadDynamicComparison(basePath) {
 function formatAffiliateLink(url, trackingId) {
     if (!url) return "#";
     const cleanUrl = url.split('?')[0];
-    return `${cleanUrl}?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=domotech_2026`;
+    return `${cleanUrl}?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
 }
 
 /**
@@ -396,7 +409,7 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
                 price: p.precio_aproximado,
                 old_price: p.precio_original,
                 image: p.imagen || 'assets/img/placeholder-tech.jpg',
-                link: formatAffiliateLink(p.enlace, 'domotech2026'),
+                link: formatAffiliateLink(p.enlace, 'Domotech_2026'),
                 descripcion: p.descripcion
             }));
 
