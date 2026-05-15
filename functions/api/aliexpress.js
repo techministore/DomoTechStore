@@ -1,9 +1,10 @@
 import { corsHeaders, handleOptions } from "../utils/cors.js";
 import { parseAliExpressItem } from "../utils/parseAliExpress.js";
+import { callAliExpressApi } from "../utils/aliApi.js";
 
 /**
  * Endpoint /api/aliexpress
- * Encargado de gestionar la búsqueda y firma de AliExpress
+ * Migrado a la API oficial de AliExpress Affiliates (Portals)
  */
 
 export async function onRequest(context) {
@@ -15,52 +16,71 @@ export async function onRequest(context) {
 
     const url = new URL(request.url);
     const keyword = url.searchParams.get('keyword') || 'smart home';
+    const isHot = url.searchParams.get('hot') === 'true'; // Para forzar productos de alta comisión
 
-    // CONFIGURACIÓN (Usando tu variable secreta de Cloudflare)
-    const RAPIDAPI_KEY = env.RAPIDAPI_KEY;
     const TRACKING_ID = "domotech2026";
 
-    if (!RAPIDAPI_KEY) {
-        return new Response(JSON.stringify({ error: "Falta RAPIDAPI_KEY en la configuración de Cloudflare" }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-    }
-
     try {
-        // 1. Llamada a AliExpress vía RapidAPI (Búsqueda de productos)
-        const apiRes = await fetch(`https://aliexpress-data-service.p.rapidapi.com/product/search?query=${encodeURIComponent(keyword)}&page=1`, {
-            method: 'GET',
-            headers: {
-                'x-rapidapi-key': RAPIDAPI_KEY,
-                'x-rapidapi-host': 'aliexpress-data-service.p.rapidapi.com'
-            }
-        });
-
-        const data = await apiRes.json();
         let items = [];
+        
+        if (isHot) {
+            // 1. OPCIÓN A: Buscar "Hot Products" (Alta Comisión - Requiere Advanced API)
+            const hotRes = await callAliExpressApi("aliexpress.affiliate.hotproduct.query", {
+                keywords: keyword,
+                tracking_id: TRACKING_ID,
+                platform_product_all: 'true',
+                page_size: '20'
+            }, env);
 
-        // 2. Normalizar los resultados según el formato de RapidAPI
-        if (data && data.data && data.data.products) {
-            items = data.data.products.map(p => ({
-                item_id: p.product_id,
-                title: p.product_title,
-                price: p.product_price,
-                sale_price: p.product_price,
-                image_url: p.product_main_image_url || p.product_small_image_urls?.[0],
-                product_url: p.product_detail_url,
-                rating: p.evaluate_rate || p.evaluate_score || null,
-                sales: p.sales_count || p.volume || 0,
-                shipping: p.shipping_fee === 0 || p.is_free_shipping ? "Gratis" : (p.shipping_fee || null),
-                commission: p.commission_rate || p.promotion_rate || null // Capturar comisión si la API la da
-            }));
+            const result = hotRes.aliexpress_affiliate_hotproduct_query_response?.resp_result?.result;
+            if (result && result.products) {
+                items = result.products.map(p => ({
+                    item_id: p.product_id,
+                    title: p.product_title,
+                    price: p.target_sale_price || p.target_original_price,
+                    image_url: p.product_main_image_url,
+                    product_url: p.promotion_link, // El hot product ya suele venir con el link de promo
+                    rating: p.evaluate_rate,
+                    sales: p.last_thirty_days_relevant_shelf_commission || 0,
+                    commission: p.commission_rate,
+                    is_hot: true
+                }));
+            }
         }
 
-        // 3. Generar Deep Links e inyectar Tracking ID
-        // Usamos el formato oficial de afiliación por parámetros para asegurar comisiones
+        // 2. OPCIÓN B: Búsqueda Estándar (Si no hay hot products o no se solicitó)
+        if (items.length === 0) {
+            const searchRes = await callAliExpressApi("aliexpress.affiliate.product.query", {
+                keywords: keyword,
+                tracking_id: TRACKING_ID,
+                page_size: '20',
+                sort: 'LAST_VOLUME_DESC' // Priorizar los más vendidos
+            }, env);
+
+            const result = searchRes.aliexpress_affiliate_product_query_response?.resp_result?.result;
+            if (result && result.products) {
+                items = result.products.map(p => ({
+                    item_id: p.product_id,
+                    title: p.product_title,
+                    price: p.target_sale_price || p.target_original_price,
+                    image_url: p.product_main_image_url,
+                    product_url: p.product_detail_url,
+                    rating: p.evaluate_rate,
+                    sales: p.last_thirty_days_relevant_shelf_commission || 0,
+                    commission: p.commission_rate
+                }));
+            }
+        }
+
+        // 3. Normalizar y generar enlaces de seguimiento
         const finalItems = items.map(item => {
-            const baseUrl = item.product_url.split('?')[0];
-            item.promotion_link = `${baseUrl}?aff_id=${TRACKING_ID}&aff_platform=api-new&sk=domotech_auto&aff_trace_key=domotech_${Date.now()}`;
+            // Si no tiene link de promoción (isHot), lo generamos
+            if (!item.product_url.includes('aff_id')) {
+                const separator = item.product_url.includes('?') ? '&' : '?';
+                item.promotion_link = `${item.product_url}${separator}aff_id=${TRACKING_ID}`;
+            } else {
+                item.promotion_link = item.product_url;
+            }
             return parseAliExpressItem(item);
         });
 
@@ -69,7 +89,7 @@ export async function onRequest(context) {
         });
 
     } catch (error) {
-        return new Response(JSON.stringify({ error: "Error en RapidAPI", details: error.message }), {
+        return new Response(JSON.stringify({ error: "Error en AliExpress Official API", details: error.message }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
         });

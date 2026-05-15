@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         `).join('');
 
         try {
-            const apiProducts = await buscarProductos(keyword);
+            const apiProducts = await buscarProductos(keyword, true); // Intentar obtener Hot Products de la categoría
             if (apiProducts && apiProducts.length > 0) {
                 // Renderizar productos de la API (AliExpress real)
                 renderAutosuficiente(apiProducts, productContainer);

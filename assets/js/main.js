@@ -140,7 +140,7 @@ async function loadDailyOffers(basePath) {
         
         const keyword = offerKeywords[Math.floor(Math.random() * offerKeywords.length)];
         
-        const products = await buscarProductos(keyword);
+        const products = await buscarProductos(keyword, true); // Forzar Hot Products para ofertas
         if (products && products.length > 0) {
             container.innerHTML = products.slice(0, 4).map(p => {
                 const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
@@ -182,7 +182,7 @@ async function loadFeatured(basePath) {
         const allCategories = await categoriesRes.json();
         const randomCategory = allCategories[Math.floor(Math.random() * allCategories.length)];
 
-        const products = await buscarProductos(`best ${randomCategory.keyword}`);
+        const products = await buscarProductos(`best ${randomCategory.keyword}`, true); // Productos destacados con alta comisión
         if (products && products.length > 0) {
             container.innerHTML = products.slice(0, 4).map(p => {
                 const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
@@ -226,7 +226,7 @@ async function loadTopSales(basePath) {
         const localProducts = await productsRes.json();
         
         const selectedCategories = allCategories.slice(0, 3);
-        const results = await Promise.all(selectedCategories.map(cat => buscarProductos(cat.keyword)));
+        const results = await Promise.all(selectedCategories.map(cat => buscarProductos(cat.keyword, true))); // Top ventas con alta comisión
         
         let hasContent = false;
         const html = selectedCategories.map((cat, idx) => {
@@ -420,9 +420,9 @@ function injectProductSchema(products) {
 /**
  * Función global para buscar en AliExpress vía API (Con Caché y Optimización)
  */
-async function buscarProductos(keyword) {
+async function buscarProductos(keyword, isHot = false) {
     if (!keyword) return [];
-    const cacheKey = `search_${keyword.toLowerCase().trim().replace(/\s+/g, '_')}`;
+    const cacheKey = `search_${keyword.toLowerCase().trim().replace(/\s+/g, '_')}${isHot ? '_hot' : ''}`;
     const CACHE_TIME = 1000 * 60 * 60; // 1 hora de caché
 
     // 1. Intentar obtener de la caché (localStorage)
@@ -440,11 +440,11 @@ async function buscarProductos(keyword) {
     const endpoint = "/api/aliexpress";
     
     try {
-        const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}`;
+        const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}${isHot ? '&hot=true' : ''}`;
         const res = await fetch(url);
         
         if (res.status === 401) {
-            console.error("API Error 401: Unauthorized. Revisa tu RAPIDAPI_KEY en Cloudflare.");
+            console.error("API Error 401: Unauthorized. Revisa tu APP_KEY y SECRET en Cloudflare.");
             return [];
         }
         
