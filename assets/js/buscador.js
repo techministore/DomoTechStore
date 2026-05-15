@@ -166,7 +166,7 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
                 ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                 <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
                 <div class="product-image-container">
-                    <img src="${p.image}" alt="${p.title}">
+                    <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=AliExpress'">
                 </div>
                 <h3>${p.title}</h3>
                 <div class="price-container">

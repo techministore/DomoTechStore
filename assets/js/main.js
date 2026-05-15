@@ -158,7 +158,7 @@ async function loadDailyOffers(basePath) {
                     ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                     <div class="urgency-badge">⚡ ¡SUPER OFERTA!</div>
                     <div class="product-image-container">
-                        <img src="${p.image}" alt="${p.title}">
+                        <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
                     </div>
                     <h3>${p.title}</h3>
                     <div class="price-container">
@@ -199,7 +199,7 @@ async function loadFeatured(basePath) {
                 <article class="card product-card" style="position: relative;">
                     ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                     <div class="product-image-container">
-                        <img src="${p.image}" alt="${p.title}">
+                        <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
                     </div>
                     <h3>${p.title}</h3>
                     <div class="price-container">
@@ -261,7 +261,7 @@ async function loadTopSales(basePath) {
             return `
                 <div class="top-sales-item card">
                     <div style="width: 70px; height: 70px; flex-shrink: 0; background: #fff; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                        <img src="${product.image}" style="width: 90%; height: 90%; object-fit: contain;" onerror="this.src='https://placehold.co/100x100/1e293b/white?text=Tech'">
+                        <img src="${product.image}" style="width: 90%; height: 90%; object-fit: contain;" loading="lazy" onerror="this.src='https://placehold.co/100x100/1e293b/white?text=Tech'">
                     </div>
                     <div style="flex-grow: 1; min-width: 0;">
                         <div class="cat-tag">${cat.nombre}</div>
@@ -376,7 +376,7 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
                         ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
                         ${showDiscount && discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
                         <div class="product-image-container">
-                            <img src="${p.image}" alt="${p.title}" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
+                            <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
                         </div>
                         <h3 itemprop="name">${p.title}</h3>
                         <p class="product-desc" itemprop="description">${p.descripcion}</p>
@@ -440,10 +440,13 @@ async function buscarProductos(keyword, isHot = false) {
         if (cached) {
             const { data, timestamp } = JSON.parse(cached);
             if (Date.now() - timestamp < CACHE_TIME) {
+                console.log(`%c[API] Cargando "${keyword}" desde caché...`, "color: #4ade80");
                 return data;
             }
         }
     } catch (e) {}
+
+    console.log(`%c[API] Conectando con AliExpress para: "${keyword}"...`, "color: #3b82f6");
 
     // 2. Llamada a la API
     const endpoint = "/api/aliexpress";
@@ -453,7 +456,7 @@ async function buscarProductos(keyword, isHot = false) {
         const res = await fetch(url);
         
         if (res.status === 401) {
-            console.error("API Error 401: Unauthorized. Revisa tu APP_KEY y SECRET en Cloudflare.");
+            console.error("%c[API] Error 401: Unauthorized. Revisa tu APP_KEY y SECRET en Cloudflare.", "background: #ff4747; color: white; padding: 2px 5px; border-radius: 3px;");
             return [];
         }
         
@@ -462,8 +465,10 @@ async function buscarProductos(keyword, isHot = false) {
         const data = await res.json();
         const result = data.result || data;
         items = result.items || [];
+        
+        console.log(`%c[API] Éxito: ${items.length} productos recibidos.`, "color: #4ade80");
     } catch (apiErr) {
-        console.warn("Error en llamada API AliExpress:", apiErr);
+        console.warn("%c[API] Error en llamada API AliExpress:", "color: #facc15", apiErr);
     }
 
     // 3. Fallback: Si pedimos 'hot' y no vino nada, intentar búsqueda normal una vez

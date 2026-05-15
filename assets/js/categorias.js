@@ -98,7 +98,7 @@ function renderAutosuficiente(products, container) {
             <article class="card product-card" style="position: relative;">
                 ${tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${tag}</div>` : ''}
                 <div class="product-image-container">
-                    <img src="${image}" alt="${title}" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=AliExpress'">
+                    <img src="${image}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=AliExpress'">
                 </div>
                 <h3>${title}</h3>
                 <div class="price-container">
