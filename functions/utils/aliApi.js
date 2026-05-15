@@ -39,8 +39,13 @@ export async function signRequest(params, secret) {
  * Realiza una llamada a la API oficial de AliExpress
  */
 export async function callAliExpressApi(method, businessParams, env) {
-    const APP_KEY = env.ALI_APP_KEY || "534120";
-    const APP_SECRET = env.ALI_APP_SECRET || "iyAwX4NpupyrvHl36esNEys1nvLG0Aig";
+    const APP_KEY = env.ALI_APP_KEY;
+    const APP_SECRET = env.ALI_APP_SECRET;
+
+    if (!APP_KEY || !APP_SECRET) {
+        throw new Error("Faltan las credenciales ALI_APP_KEY o ALI_APP_SECRET en las variables de entorno.");
+    }
+
     const API_URL = "https://api-sg.aliexpress.com/sync";
 
     const commonParams = {

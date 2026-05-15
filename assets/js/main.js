@@ -72,7 +72,7 @@ function fixEmptyLinks() {
         const cleanName = productName.replace(/^\d+\.\s*/, '').trim();
         
         // Crear enlace de búsqueda con tracking
-        const trackingId = "domotech_2026";
+        const trackingId = "Domotech_2026";
         link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
         link.target = "_blank";
         link.rel = "nofollow sponsored";

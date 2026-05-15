@@ -4,7 +4,7 @@
 */
 
 const API_CONFIG = {
-    tracking_id: "domotech2026"
+    tracking_id: "Domotech_2026"
 };
 
 document.addEventListener('DOMContentLoaded', () => {
