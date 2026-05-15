@@ -72,15 +72,15 @@ export async function onRequest(context) {
             }
         }
 
-        // 3. Normalizar y generar enlaces de seguimiento
+        // 3. Normalizar y generar enlaces de seguimiento oficiales
         const finalItems = items.map(item => {
-            // Si no tiene link de promoción (isHot), lo generamos
-            if (!item.product_url.includes('aff_id')) {
-                const separator = item.product_url.includes('?') ? '&' : '?';
-                item.promotion_link = `${item.product_url}${separator}aff_id=${TRACKING_ID}`;
-            } else {
-                item.promotion_link = item.product_url;
-            }
+            // Limpiar la URL base para evitar parámetros basura
+            const cleanUrl = item.product_url.split('?')[0];
+            
+            // Generar el enlace de afiliado usando el formato que requiere AliExpress Portals para el seguimiento correcto
+            // Usamos aff_fcid=default como fallback de seguridad y aff_id para tu cuenta
+            item.promotion_link = `${cleanUrl}?aff_id=${TRACKING_ID}&aff_fcid=default&aff_platform=portals-tool&sk=domotech_2026`;
+            
             return parseAliExpressItem(item);
         });
 

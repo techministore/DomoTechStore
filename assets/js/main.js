@@ -319,12 +319,12 @@ function loadDynamicComparison(basePath) {
 }
 
 /**
- * Asegura que el enlace de afiliado esté bien formateado
+ * Asegura que el enlace de afiliado esté bien formateado con los parámetros de Portals
  */
 function formatAffiliateLink(url, trackingId) {
     if (!url) return "#";
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}aff_id=${trackingId}`;
+    const cleanUrl = url.split('?')[0];
+    return `${cleanUrl}?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=domotech_2026`;
 }
 
 /**
