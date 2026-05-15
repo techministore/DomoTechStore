@@ -1,9 +1,6 @@
-/**
- * Firma SOLO los parámetros comunes (obligatorio en AliExpress IOP)
- */
 export async function signRequest(params, secret) {
     const sortedKeys = Object.keys(params).sort();
-    let basestring = '';
+    let basestring = "";
 
     for (const key of sortedKeys) {
         basestring += key + params[key];
@@ -14,32 +11,24 @@ export async function signRequest(params, secret) {
     const messageData = encoder.encode(basestring);
 
     const cryptoKey = await crypto.subtle.importKey(
-        'raw',
+        "raw",
         keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
+        { name: "HMAC", hash: "SHA-256" },
         false,
-        ['sign']
+        ["sign"]
     );
 
-    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
     const hashArray = Array.from(new Uint8Array(signatureBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
 }
 
-/**
- * Llamada correcta a la API oficial de AliExpress (Portals)
- */
 export async function callAliExpressApi(method, businessParams, env) {
     const APP_KEY = env.ALI_APP_KEY;
     const APP_SECRET = env.ALI_APP_SECRET;
 
-    if (!APP_KEY || !APP_SECRET) {
-        throw new Error("Faltan ALI_APP_KEY o ALI_APP_SECRET.");
-    }
+    const API_URL = "https://api-sg.aliexpress.com/sync/portal/affiliate";
 
-    const API_URL = "https://api-sg.aliexpress.com/sync/portal";
-
-    // SOLO parámetros comunes
     const commonParams = {
         app_key: APP_KEY,
         timestamp: Date.now().toString(),
@@ -52,14 +41,14 @@ export async function callAliExpressApi(method, businessParams, env) {
     // Firmar SOLO commonParams
     const sign = await signRequest(commonParams, APP_SECRET);
 
-    // Construir query con commonParams + sign
-    const queryParams = new URLSearchParams({ ...commonParams, sign }).toString();
+    // Construir querystring con commonParams + sign + businessParams
+    const allParams = { ...commonParams, ...businessParams, sign };
+    const queryString = new URLSearchParams(allParams).toString();
 
-    // Enviar businessParams en el cuerpo POST
-    const response = await fetch(`${API_URL}?${queryParams}`, {
+    const response = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(businessParams)
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: queryString
     });
 
     return await response.json();
