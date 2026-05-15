@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTopSales(rootPath);
 
     // 5. Automatizar enlaces vacíos en guías estáticas
-    fixEmptyLinks();
+    automateProductLinks();
 
     // 6. Diagnóstico de API para el usuario
     console.log("%c[DomoTech] Sistema Inicializado v2.1", "color: #3b82f6; font-weight: bold; font-size: 1.2rem;");
@@ -59,24 +59,47 @@ async function checkApiStatus() {
 }
 
 /**
- * Automatiza los enlaces que están vacíos (#) convirtiéndolos en búsquedas con tracking
+ * Automatiza los enlaces que están vacíos (#) convirtiéndolos en enlaces DIRECTOS al mejor producto
  */
-function fixEmptyLinks() {
+async function automateProductLinks() {
     const emptyLinks = document.querySelectorAll('a[href="#"]');
-    emptyLinks.forEach(link => {
-        // Intentar obtener el nombre del producto del encabezado más cercano
+    const trackingId = "Domotech_2026";
+
+    for (const link of emptyLinks) {
+        // 1. Obtener el nombre del producto del contexto
         const card = link.closest('.card') || link.parentElement;
         const productName = card.querySelector('h2, h3')?.textContent || "smart home";
-        
-        // Limpiar el nombre (quitar números de lista como "1. ")
         const cleanName = productName.replace(/^\d+\.\s*/, '').trim();
-        
-        // Crear enlace de búsqueda con tracking
-        const trackingId = "Domotech_2026";
+
+        // 2. Fallback inmediato (Búsqueda) por si la API tarda o falla
         link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
         link.target = "_blank";
         link.rel = "nofollow sponsored";
-    });
+
+        // 3. Intentar mejorar el enlace con un "Match" directo de la API
+        try {
+            // Buscamos el producto específico
+            const products = await buscarProductos(cleanName, true); 
+            if (products && products.length > 0) {
+                // El primer producto devuelto ya está ordenado por "Mejor Opción" en buscarProductos/processBestProducts
+                const bestMatch = products[0];
+                
+                // Actualizamos el enlace a la URL de promoción directa del producto
+                link.href = bestMatch.link;
+                
+                // Opcional: Añadir un tooltip o aviso de que es la mejor oferta
+                link.title = `Mejor oferta encontrada: ${bestMatch.price}€`;
+                
+                // Si estamos en una card estática, podemos incluso actualizar el precio dinámicamente si existe un lugar
+                const priceEl = card.querySelector('.current-price');
+                if (priceEl && !priceEl.textContent.includes('€')) {
+                    priceEl.textContent = `${bestMatch.price}€`;
+                }
+            }
+        } catch (err) {
+            console.warn(`No se pudo encontrar match directo para "${cleanName}", se mantiene enlace de búsqueda.`);
+        }
+    }
 }
 
 /**

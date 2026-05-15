@@ -54,21 +54,26 @@ export async function onRequest(context) {
                 keywords: keyword,
                 tracking_id: TRACKING_ID,
                 page_size: '20',
-                sort: 'LAST_VOLUME_DESC' // Priorizar los más vendidos
+                sort: 'LAST_VOLUME_DESC', // Priorizar los más vendidos
+                min_item_price: '300', // Evitar morralla/accesorios baratos si buscamos productos reales (centavos)
+                delivery_days: '10' // Priorizar entrega rápida si es posible
             }, env);
 
             const result = searchRes.aliexpress_affiliate_product_query_response?.resp_result?.result;
             if (result && result.products) {
-                items = result.products.map(p => ({
-                    item_id: p.product_id,
-                    title: p.product_title,
-                    price: p.target_sale_price || p.target_original_price,
-                    image_url: p.product_main_image_url,
-                    product_url: p.product_detail_url,
-                    rating: p.evaluate_rate,
-                    sales: p.last_thirty_days_relevant_shelf_commission || 0,
-                    commission: p.commission_rate
-                }));
+                // Filtrar productos con rating bajo (menor a 4.0) para asegurar calidad
+                items = result.products
+                    .filter(p => !p.evaluate_rate || parseFloat(p.evaluate_rate) >= 4.0)
+                    .map(p => ({
+                        item_id: p.product_id,
+                        title: p.product_title,
+                        price: p.target_sale_price || p.target_original_price,
+                        image_url: p.product_main_image_url,
+                        product_url: p.product_detail_url,
+                        rating: p.evaluate_rate,
+                        sales: p.last_thirty_days_relevant_shelf_commission || 0,
+                        commission: p.commission_rate
+                    }));
             }
         }
 
@@ -128,9 +133,19 @@ export async function onRequest(context) {
  */
 function cleanAliUrl(url) {
     if (!url) return "";
+    
+    // 1) Si ya es una URL de producto, la dejamos limpia
     const match = url.match(/\/item\/(\d+)\.html/);
     if (match) {
         return `https://www.aliexpress.com/item/${match[1]}.html`;
     }
+    
+    // 2) Si la URL contiene _object_id=ID, lo extraemos
+    const idMatch = url.match(/_object_id%3A(\d+)/) || url.match(/_object_id=(\d+)/);
+    if (idMatch) {
+        return `https://www.aliexpress.com/item/${idMatch[1]}.html`;
+    }
+    
+    // 3) Último recurso: quitar parámetros
     return url.split('?')[0];
 }
