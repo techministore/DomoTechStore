@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     generateSEO(rootPath);
 
     // 4. Cargar datos dinámicos según la página
-    mostrarProductos("smart home", "ofertas-dia");
     loadFeatured(rootPath);
     loadTopSales(rootPath);
 
@@ -599,3 +598,8 @@ function trackClick(productId, provider) {
         console.error("Error registrando click:", e);
     }
 }
+
+// Conexión automática con AliExpress (Ofertas del día)
+document.addEventListener("DOMContentLoaded", () => {
+    mostrarProductos("smart home", "ofertas-dia");
+});
