@@ -18,7 +18,7 @@ export async function onRequest(context) {
     const keyword = url.searchParams.get('keyword') || 'smart home';
     const isHot = url.searchParams.get('hot') === 'true'; // Para forzar productos de alta comisión
 
-    const TRACKING_ID = "domotech2026";
+    const TRACKING_ID = "Domotech_2026";
 
     try {
         let items = [];
