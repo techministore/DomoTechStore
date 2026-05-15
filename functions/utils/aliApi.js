@@ -27,16 +27,20 @@ export async function signRequest(params, secret) {
 }
 
 /**
- * Llamada correcta a la API oficial de AliExpress (Portals)
- * IMPORTANTE: AliExpress NO acepta JSON en el body.
- * Requiere Content-Type: application/x-www-form-urlencoded y todos los parámetros en el body.
+ * Versión CORRECTA de callAliExpressApi() para AliExpress Portals
+ * - POST obligatorio
+ * - Content-Type: application/x-www-form-urlencoded
+ * - TODO en el body (common + business + sign)
+ * - NADA en la URL (querystring)
+ * - NADA de JSON
+ * - Firma SOLO de commonParams
  */
 export async function callAliExpressApi(method, businessParams, env) {
     const APP_KEY = env.ALI_APP_KEY;
     const APP_SECRET = env.ALI_APP_SECRET;
 
     if (!APP_KEY || !APP_SECRET) {
-        throw new Error("Faltan las credenciales ALI_APP_KEY o ALI_APP_SECRET en las variables de entorno.");
+        throw new Error("Faltan las credenciales ALI_APP_KEY o ALI_APP_SECRET.");
     }
 
     const API_URL = "https://api-sg.aliexpress.com/sync/portal/affiliate";
@@ -50,15 +54,16 @@ export async function callAliExpressApi(method, businessParams, env) {
         method
     };
 
-    // Firmar SOLO commonParams (según especificación IOP para este endpoint)
+    // 1) Firmar SOLO commonParams
     const sign = await signRequest(commonParams, APP_SECRET);
 
-    // Construir body con TODOS los parámetros (common + business + sign)
+    // 2) Construir body con TODOS los parámetros (common + business + sign)
     const allParams = { ...commonParams, ...businessParams, sign };
 
-    // Convertir a formato x-www-form-urlencoded
+    // 3) Convertir a formato x-www-form-urlencoded
     const body = new URLSearchParams(allParams).toString();
 
+    // 4) Petición POST con todo en el body y sin parámetros en URL
     const response = await fetch(API_URL, {
         method: "POST",
         headers: { 
