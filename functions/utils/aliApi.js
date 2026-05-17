@@ -53,16 +53,11 @@ export async function callAliExpressApi(method, businessParams, env) {
         method
     };
 
-    // 2) Mezclar TODOS los parámetros para la firma
-    // IMPORTANTE: En el protocolo IOP (Singapur), TODOS los parámetros de la petición 
-    // deben formar parte de la firma para evitar el error "request signature does not conform"
-    const allParams = { ...commonParams, ...businessParams };
+    // 2) Firmar SOLO commonParams (SOLUCIÓN DEFINITIVA para Portals)
+    const sign = await signRequest(commonParams, APP_SECRET);
 
-    // 3) Firmar TODOS los parámetros
-    const sign = await signRequest(allParams, APP_SECRET);
-
-    // 4) Construir body final con el sign incluido
-    const finalParams = { ...allParams, sign };
+    // 3) Construir body final con TODOS los parámetros (common + business + sign)
+    const finalParams = { ...commonParams, ...businessParams, sign };
     const body = new URLSearchParams(finalParams).toString();
 
     // 5) Petición POST con x-www-form-urlencoded y TODO en el body
