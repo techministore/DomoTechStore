@@ -1,12 +1,16 @@
 /**
- * Firma SOLO los parámetros comunes (obligatorio en AliExpress IOP)
+ * Firma los parámetros (soporta objeto o string directo)
  */
-export async function signRequest(params, secret) {
-    const sortedKeys = Object.keys(params).sort();
+export async function signRequest(paramsOrString, secret) {
     let basestring = '';
-
-    for (const key of sortedKeys) {
-        basestring += key + params[key];
+    
+    if (typeof paramsOrString === 'string') {
+        basestring = paramsOrString;
+    } else {
+        const sortedKeys = Object.keys(paramsOrString).sort();
+        for (const key of sortedKeys) {
+            basestring += key + paramsOrString[key];
+        }
     }
 
     const encoder = new TextEncoder();
@@ -38,9 +42,13 @@ export async function callAliExpressApi(method, businessParams, env) {
     }
 
     const API_URL = "https://api-sg.aliexpress.com/sync/portal/affiliate";
-    const timestamp = Date.now().toString();
+    
+    // Formato de fecha requerido por AliExpress: yyyy-MM-dd HH:mm:ss
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-    // 1) Parámetros comunes obligatorios para la firma (Exactamente 6)
+    // 1) Parámetros comunes obligatorios
     const commonParams = {
         app_key: APP_KEY,
         format: "json",
@@ -50,29 +58,31 @@ export async function callAliExpressApi(method, businessParams, env) {
         v: "2.0"
     };
 
-    // 2) Firmar SOLO los parámetros comunes (Regla de oro de Portals)
-    // El método signRequest ya los ordena alfabéticamente
-    const sign = await signRequest(commonParams, APP_SECRET);
-
-    // 3) Construir el body en el orden correcto:
-    //    1. commonParams (ordenados)
-    //    2. businessParams (SIN ordenar)
-    //    3. sign (al final)
+    // 2) Construir basestring (para la firma) y bodyParts (para el envío)
+    // Regla de Portals: Solo se ordenan los comunes, los de negocio van después en su orden original
+    let basestring = "";
     const bodyParts = [];
 
     // 1. commonParams ordenados
-    for (const key of Object.keys(commonParams).sort()) {
-        bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(commonParams[key])}`);
+    const sortedCommonKeys = Object.keys(commonParams).sort();
+    for (const key of sortedCommonKeys) {
+        const value = commonParams[key];
+        basestring += key + value;
+        bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
     }
 
-    // 2. businessParams SIN ordenar
+    // 2. businessParams SIN ordenar (en su orden de inserción)
     for (const key of Object.keys(businessParams)) {
-        bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(businessParams[key])}`);
+        const value = businessParams[key];
+        basestring += key + value;
+        bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
     }
 
-    // 3. sign al final
-    bodyParts.push(`sign=${encodeURIComponent(sign)}`);
+    // 3) Generar la firma usando la basestring completa
+    const sign = await signRequest(basestring, APP_SECRET);
 
+    // 4) Añadir la firma al final
+    bodyParts.push(`sign=${encodeURIComponent(sign)}`);
     const body = bodyParts.join("&");
 
     // 5) Petición POST con x-www-form-urlencoded
