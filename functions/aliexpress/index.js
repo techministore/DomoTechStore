@@ -28,9 +28,11 @@ export async function onRequest(context) {
     let apiResponse;
 
     try {
+        const method = hot ? "aliexpress.affiliate.hotproduct.query" : "aliexpress.affiliate.product.query";
+        
         if (hot) {
             apiResponse = await callAliExpressApi(
-                "aliexpress.affiliate.hotproduct.query",
+                method,
                 {
                     ...baseParams,
                     keywords: keyword,
@@ -40,7 +42,7 @@ export async function onRequest(context) {
             );
         } else {
             apiResponse = await callAliExpressApi(
-                "aliexpress.affiliate.product.query",
+                method,
                 {
                     ...baseParams,
                     keywords: keyword,
@@ -50,9 +52,33 @@ export async function onRequest(context) {
             );
         }
 
-        // Navegar por la estructura de respuesta de AliExpress
-        const responseData = apiResponse?.aliexpress_affiliate_hotproduct_query_response || apiResponse?.aliexpress_affiliate_product_query_response;
-        const items = responseData?.resp_result?.result?.products || [];
+        // Log para depuración en Cloudflare (Solo visible para el admin)
+        console.log(`AliExpress API Response for ${method}:`, JSON.stringify(apiResponse).substring(0, 500));
+
+        // Navegar por la estructura de respuesta de AliExpress de forma robusta
+        // La API puede devolver los productos en diferentes niveles según el método
+        const responseData = apiResponse?.aliexpress_affiliate_hotproduct_query_response || 
+                           apiResponse?.aliexpress_affiliate_product_query_response || 
+                           apiResponse;
+        
+        const items = responseData?.resp_result?.result?.products || 
+                      responseData?.result?.products || 
+                      responseData?.products || 
+                      apiResponse?.items || 
+                      [];
+
+        // Si la API devuelve un error explícito, capturarlo
+        if (apiResponse?.error_response || apiResponse?.code) {
+            console.error("AliExpress API Error:", apiResponse);
+            return new Response(JSON.stringify({ 
+                error: apiResponse?.error_response?.msg || apiResponse?.msg || "Error en API AliExpress",
+                details: apiResponse,
+                items: [] 
+            }), {
+                status: 200, // Retornamos 200 para que el frontend pueda leer el error en el body si quiere
+                headers: { "Content-Type": "application/json" }
+            });
+        }
 
         // Limpieza de URLs y mapeo de campos
         const cleaned = items.map(p => ({

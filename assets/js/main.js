@@ -214,8 +214,8 @@ async function mostrarProductos(keyword, containerId) {
             // 3. Renderizar productos reales de AliExpress
             container.innerHTML = products.slice(0, 4).map(p => {
                 const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
-                const hasOldPrice = p.old_price && parseFloat(p.old_price) > parseFloat(p.price);
-                const oldPriceHtml = hasOldPrice ? `<span class="old-price">${p.old_price}€</span>` : '';
+                const hasOldPrice = p.original_price && parseFloat(p.original_price) > parseFloat(p.price);
+                const oldPriceHtml = hasOldPrice ? `<span class="old-price">${p.original_price}€</span>` : '';
 
                 return `
                 <article class="card product-card" style="position: relative;">
@@ -229,8 +229,8 @@ async function mostrarProductos(keyword, containerId) {
                         ${oldPriceHtml}
                         <span class="current-price">${p.price}€</span>
                     </div>
-                    ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
-                    <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Comprar Ahora →</a>
+                    ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales || 0}+ vendidos</div>` : ''}
+                    <a href="${p.url || p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Comprar Ahora →</a>
                 </article>
                 `;
             }).join('');
@@ -322,7 +322,7 @@ async function loadTopSales(basePath) {
         if (hasContent) {
             container.innerHTML = html;
         } else {
-            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">Sincronizando con AliExpress...</p>';
+            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">No hay ofertas disponibles en AliExpress en este momento.</p>';
         }
     } catch (error) {
         console.error("Error cargando top ventas reales:", error);
@@ -510,6 +510,13 @@ async function buscarProductos(keyword, isHot = false) {
         if (!res.ok) throw new Error(`Error API: ${res.status}`);
         
         const data = await res.json();
+        
+        if (data.error) {
+            console.error(`%c[API] AliExpress Error: ${data.error}`, "background: #450a0a; color: #f87171; padding: 2px 5px; border-radius: 3px;");
+            if (data.details) console.dir(data.details);
+            return [];
+        }
+
         const result = data.result || data;
         items = result.items || [];
         

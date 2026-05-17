@@ -75,14 +75,26 @@ function filterLocalItems(searchTerm) {
 async function mostrarProductos(keyword, customContainerId = null) {
     if (!keyword) return;
 
-    // 1. Mostrar Skeletons antes de la carga
-    renderSkeletons(keyword, customContainerId);
+    const containerId = customContainerId || 'ofertas-dia';
+    const container = document.getElementById(containerId);
 
-    // 2. Obtener productos (buscarProductos ya maneja el caché)
-    const productos = await buscarProductos(keyword);
-    
-    // 3. Renderizar resultados finales
-    renderExternalResults(productos, keyword, customContainerId);
+    // Si el contenedor no existe y estamos en el buscador, usamos la lógica de grid externo
+    if (!container && !customContainerId) {
+        renderSkeletons(keyword);
+        const productos = await buscarProductos(keyword);
+        renderExternalResults(productos, keyword);
+        return;
+    }
+
+    // Si existe el contenedor (como 'ofertas-dia' en home), usamos la función global de main.js
+    if (typeof window.mostrarProductos === 'function' && containerId === 'ofertas-dia') {
+        window.mostrarProductos(keyword, containerId);
+    } else {
+        // Fallback o buscador
+        renderSkeletons(keyword, containerId);
+        const productos = await buscarProductos(keyword);
+        renderExternalResults(productos, keyword, containerId);
+    }
 }
 
 /**
@@ -165,6 +177,9 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
         else if (p.tag === "CALIDAD-PRECIO") badgeClass = "badge badge-value";
         else if (p.tag === "RECOMENDADO" || p.tag === "MÁS VENDIDO") badgeClass = "badge badge-recommended";
 
+        const hasOldPrice = p.original_price && parseFloat(p.original_price) > parseFloat(p.price);
+        const oldPriceHtml = hasOldPrice ? `<span class="old-price">${p.original_price}€</span>` : '';
+
         return `
             <article class="card product-card" style="position: relative;">
                 ${p.tag ? `<div class="${badgeClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
@@ -174,11 +189,11 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
                 </div>
                 <h3>${p.title}</h3>
                 <div class="price-container">
-                    <span class="old-price">${(parseFloat(p.price) * 1.4).toFixed(2)}€</span>
+                    ${oldPriceHtml}
                     <span class="current-price">${p.price}€</span>
                 </div>
-                ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
-                <a href="${p.link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${p.id}', 'aliexpress')">
+                ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px;">⭐ ${p.rating} | ${p.sales || 0}+ vendidos</div>` : ''}
+                <a href="${p.url}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${p.id}', 'aliexpress')">
                     Comprar Ahora →
                 </a>
             </article>
