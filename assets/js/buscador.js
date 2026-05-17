@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(debounceTimer);
             if (searchTerm.length > 3) {
                 debounceTimer = setTimeout(() => {
-                    mostrarProductos(searchTerm);
+                    buscarYMostrarProductos(searchTerm);
                 }, 800);
             }
         });
@@ -32,15 +32,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Automatización por Página
     const path = window.location.pathname;
     if (path.includes('smart-home.html')) {
-        mostrarProductos("smart home");
+        buscarYMostrarProductos("smart home");
     } else if (path.includes('camaras.html')) {
-        mostrarProductos("security camera");
+        buscarYMostrarProductos("security camera");
     } else if (path.includes('interruptores.html')) {
-        mostrarProductos("wifi switch");
+        buscarYMostrarProductos("wifi switch");
     } else if (path.endsWith('index.html') || path === '/') {
         const initialKeywords = ["smart home", "gadgets", "wifi switch", "security camera"];
         const randomKeyword = initialKeywords[Math.floor(Math.random() * initialKeywords.length)];
-        mostrarProductos(randomKeyword);
+        buscarYMostrarProductos(randomKeyword);
     }
 });
 

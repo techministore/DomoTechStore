@@ -38,29 +38,32 @@ export async function callAliExpressApi(method, businessParams, env) {
     }
 
     const API_URL = "https://api-sg.aliexpress.com/sync/portal/affiliate";
-
-    // Obtener timestamp en formato long (milisegundos) o yyyy-MM-dd HH:mm:ss
-    // AliExpress Portals IOP suele aceptar el long de milisegundos
     const timestamp = Date.now().toString();
 
-    // 1) Preparar parámetros comunes
+    // 1) Parámetros comunes obligatorios para la firma (Exactamente 6)
     const commonParams = {
         app_key: APP_KEY,
-        timestamp: timestamp,
         format: "json",
-        v: "2.0",
+        method: method,
         sign_method: "sha256",
-        method
+        timestamp: timestamp,
+        v: "2.0"
     };
 
-    // 2) Firmar SOLO commonParams (SOLUCIÓN DEFINITIVA para Portals)
+    // 2) Firmar SOLO los parámetros comunes (Regla de oro de Portals)
+    // El método signRequest ya los ordena alfabéticamente
     const sign = await signRequest(commonParams, APP_SECRET);
 
-    // 3) Construir body final con TODOS los parámetros (common + business + sign)
-    const finalParams = { ...commonParams, ...businessParams, sign };
-    const body = new URLSearchParams(finalParams).toString();
+    // 3) Construir el body con TODOS los parámetros (comunes + negocio + sign)
+    const allParams = { ...commonParams, ...businessParams, sign };
 
-    // 5) Petición POST con x-www-form-urlencoded y TODO en el body
+    // 4) IMPORTANTE: El body debe enviarse en el mismo orden alfabético que la firma
+    const sortedKeys = Object.keys(allParams).sort();
+    const body = sortedKeys
+        .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(allParams[key])}`)
+        .join('&');
+
+    // 5) Petición POST con x-www-form-urlencoded
     const response = await fetch(API_URL, {
         method: "POST",
         headers: { 
