@@ -1,5 +1,5 @@
-import { callAliExpressApi } from "../utils/aliApi.js";
-import { cleanAliUrl } from "../utils/cleanUrl.js";
+import { callAliExpressApi } from "../../utils/aliApi.js";
+import { cleanAliUrl } from "../../utils/cleanUrl.js";
 
 /**
  * Endpoint /aliexpress/index.js (Cloudflare Functions)
