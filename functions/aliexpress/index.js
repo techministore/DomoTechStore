@@ -52,9 +52,6 @@ export async function onRequest(context) {
             );
         }
 
-        // Log para depuración en Cloudflare (Solo visible para el admin)
-        console.log(`AliExpress API Response for ${method}:`, JSON.stringify(apiResponse).substring(0, 500));
-
         // Navegar por la estructura de respuesta de AliExpress de forma robusta
         // La API puede devolver los productos en diferentes niveles según el método
         const responseData = apiResponse?.aliexpress_affiliate_hotproduct_query_response || 

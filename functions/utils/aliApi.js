@@ -49,15 +49,11 @@ export async function callAliExpressApi(method, businessParams, env) {
         method
     };
 
-    // 2) Mezclar TODOS los parámetros (comunes + negocio) para la firma
-    // AliExpress IOP Portals exige que TODOS los parámetros se incluyan en la firma
-    const allParams = { ...commonParams, ...businessParams };
+    // 2) Firmar SOLO commonParams (Regla de oro de AliExpress Portals)
+    const sign = await signRequest(commonParams, APP_SECRET);
 
-    // 3) Firmar TODOS los parámetros
-    const sign = await signRequest(allParams, APP_SECRET);
-
-    // 4) Construir body final con el sign incluido
-    const finalParams = { ...allParams, sign };
+    // 3) Construir body final con TODOS los parámetros (common + business + sign)
+    const finalParams = { ...commonParams, ...businessParams, sign };
     const body = new URLSearchParams(finalParams).toString();
 
     // 5) Petición POST con x-www-form-urlencoded
