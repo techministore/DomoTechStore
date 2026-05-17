@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function checkApiStatus() {
     try {
-        const res = await fetch("/api/aliexpress?keyword=test");
+        const res = await fetch("/aliexpress?keyword=test");
         if (res.ok) {
             console.log("%c[API] Conexión establecida con éxito. AliExpress está operativo.", "color: #4ade80; font-weight: bold;");
         } else if (res.status === 401) {
@@ -496,7 +496,7 @@ async function buscarProductos(keyword, isHot = false) {
     console.log(`%c[API] Conectando con AliExpress para: "${keyword}"...`, "color: #3b82f6");
 
     // 2. Llamada a la API
-    const endpoint = "/api/aliexpress";
+    const endpoint = "/aliexpress";
     let items = [];
     try {
         const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}${isHot ? '&hot=true' : ''}`;
