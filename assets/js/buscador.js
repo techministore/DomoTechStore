@@ -69,26 +69,21 @@ function filterLocalItems(searchTerm) {
 
 /**
  * Muestra los productos en la web (Con Loading Skeletons y Optimización)
- * @param {string} keyword - Palabra clave a buscar
- * @param {string} customContainerId - ID opcional del contenedor
+ * Función específica para el buscador y páginas de categoría
  */
-async function mostrarProductos(keyword, customContainerId = null) {
+async function buscarYMostrarProductos(keyword, customContainerId = null) {
     if (!keyword) return;
 
     const containerId = customContainerId || 'ofertas-dia';
     const container = document.getElementById(containerId);
 
-    // Si el contenedor no existe y estamos en el buscador, usamos la lógica de grid externo
-    if (!container && !customContainerId) {
-        renderSkeletons(keyword);
-        const productos = await buscarProductos(keyword);
-        renderExternalResults(productos, keyword);
-        return;
-    }
-
-    // EVITAR RECURSIÓN: Si el contenedor es 'ofertas-dia', llamar a la lógica de renderizado, NO a sí misma
+    // 1. Mostrar Skeletons antes de la carga
     renderSkeletons(keyword, containerId);
+
+    // 2. Obtener productos (buscarProductos ya maneja el caché)
     const productos = await buscarProductos(keyword);
+    
+    // 3. Renderizar resultados finales
     renderExternalResults(productos, keyword, containerId);
 }
 

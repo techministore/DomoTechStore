@@ -608,5 +608,7 @@ function trackClick(productId, provider) {
 
 // Conexión automática con AliExpress (Ofertas del día)
 document.addEventListener("DOMContentLoaded", () => {
-    mostrarProductos("smart home", "ofertas-dia");
+    if (typeof mostrarProductos === 'function') {
+        mostrarProductos("smart home", "ofertas-dia");
+    }
 });

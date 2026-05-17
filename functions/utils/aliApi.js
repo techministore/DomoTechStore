@@ -39,24 +39,33 @@ export async function callAliExpressApi(method, businessParams, env) {
 
     const API_URL = "https://api-sg.aliexpress.com/sync/portal/affiliate";
 
+    // Obtener timestamp en formato long (milisegundos) o yyyy-MM-dd HH:mm:ss
+    // AliExpress Portals IOP suele aceptar el long de milisegundos
+    const timestamp = Date.now().toString();
+
     // 1) Preparar parámetros comunes
     const commonParams = {
         app_key: APP_KEY,
-        timestamp: Date.now().toString(),
+        timestamp: timestamp,
         format: "json",
         v: "2.0",
         sign_method: "sha256",
         method
     };
 
-    // 2) Firmar SOLO commonParams (Regla de oro de AliExpress Portals)
-    const sign = await signRequest(commonParams, APP_SECRET);
+    // 2) Mezclar TODOS los parámetros para la firma
+    // IMPORTANTE: En el protocolo IOP (Singapur), TODOS los parámetros de la petición 
+    // deben formar parte de la firma para evitar el error "request signature does not conform"
+    const allParams = { ...commonParams, ...businessParams };
 
-    // 3) Construir body final con TODOS los parámetros (common + business + sign)
-    const finalParams = { ...commonParams, ...businessParams, sign };
+    // 3) Firmar TODOS los parámetros
+    const sign = await signRequest(allParams, APP_SECRET);
+
+    // 4) Construir body final con el sign incluido
+    const finalParams = { ...allParams, sign };
     const body = new URLSearchParams(finalParams).toString();
 
-    // 5) Petición POST con x-www-form-urlencoded
+    // 5) Petición POST con x-www-form-urlencoded y TODO en el body
     const response = await fetch(API_URL, {
         method: "POST",
         headers: { 
