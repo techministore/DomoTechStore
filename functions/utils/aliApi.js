@@ -39,10 +39,8 @@ export async function callAliExpressApi(method, businessParams, env) {
 
     const API_URL = "https://api-sg.aliexpress.com/sync/portal/affiliate";
     
-    // Formato de fecha requerido por AliExpress: yyyy-MM-dd HH:mm:ss (UTC preferible)
-    const now = new Date();
-    const pad = (n) => n.toString().padStart(2, '0');
-    const timestamp = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
+    // AliExpress Portals (IOP) exige el timestamp en milisegundos (UNIX string)
+    const timestamp = Date.now().toString();
 
     // 1) Parámetros comunes obligatorios
     const commonParams = {
