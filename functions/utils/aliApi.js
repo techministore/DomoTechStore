@@ -54,14 +54,26 @@ export async function callAliExpressApi(method, businessParams, env) {
     // El método signRequest ya los ordena alfabéticamente
     const sign = await signRequest(commonParams, APP_SECRET);
 
-    // 3) Construir el body con TODOS los parámetros (comunes + negocio + sign)
-    const allParams = { ...commonParams, ...businessParams, sign };
+    // 3) Construir el body en el orden correcto:
+    //    1. commonParams (ordenados)
+    //    2. businessParams (SIN ordenar)
+    //    3. sign (al final)
+    const bodyParts = [];
 
-    // 4) IMPORTANTE: El body debe enviarse en el mismo orden alfabético que la firma
-    const sortedKeys = Object.keys(allParams).sort();
-    const body = sortedKeys
-        .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(allParams[key])}`)
-        .join('&');
+    // 1. commonParams ordenados
+    for (const key of Object.keys(commonParams).sort()) {
+        bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(commonParams[key])}`);
+    }
+
+    // 2. businessParams SIN ordenar
+    for (const key of Object.keys(businessParams)) {
+        bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(businessParams[key])}`);
+    }
+
+    // 3. sign al final
+    bodyParts.push(`sign=${encodeURIComponent(sign)}`);
+
+    const body = bodyParts.join("&");
 
     // 5) Petición POST con x-www-form-urlencoded
     const response = await fetch(API_URL, {
