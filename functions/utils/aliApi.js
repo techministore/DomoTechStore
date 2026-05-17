@@ -28,12 +28,6 @@ export async function signRequest(params, secret) {
 
 /**
  * Versión CORRECTA de callAliExpressApi() para AliExpress Portals
- * - POST obligatorio
- * - Content-Type: application/x-www-form-urlencoded
- * - TODO en el body (common + business + sign)
- * - NADA en la URL (querystring)
- * - NADA de JSON
- * - Firma SOLO de commonParams
  */
 export async function callAliExpressApi(method, businessParams, env) {
     const APP_KEY = env.ALI_APP_KEY;
@@ -45,6 +39,7 @@ export async function callAliExpressApi(method, businessParams, env) {
 
     const API_URL = "https://api-sg.aliexpress.com/sync/portal/affiliate";
 
+    // 1) Preparar parámetros comunes
     const commonParams = {
         app_key: APP_KEY,
         timestamp: Date.now().toString(),
@@ -54,16 +49,18 @@ export async function callAliExpressApi(method, businessParams, env) {
         method
     };
 
-    // 1) Firmar SOLO commonParams
-    const sign = await signRequest(commonParams, APP_SECRET);
+    // 2) Mezclar TODOS los parámetros (comunes + negocio) para la firma
+    // AliExpress IOP Portals exige que TODOS los parámetros se incluyan en la firma
+    const allParams = { ...commonParams, ...businessParams };
 
-    // 2) Construir body con TODOS los parámetros (common + business + sign)
-    const allParams = { ...commonParams, ...businessParams, sign };
+    // 3) Firmar TODOS los parámetros
+    const sign = await signRequest(allParams, APP_SECRET);
 
-    // 3) Convertir a formato x-www-form-urlencoded
-    const body = new URLSearchParams(allParams).toString();
+    // 4) Construir body final con el sign incluido
+    const finalParams = { ...allParams, sign };
+    const body = new URLSearchParams(finalParams).toString();
 
-    // 4) Petición POST con todo en el body y sin parámetros en URL
+    // 5) Petición POST con x-www-form-urlencoded
     const response = await fetch(API_URL, {
         method: "POST",
         headers: { 

@@ -86,15 +86,10 @@ async function mostrarProductos(keyword, customContainerId = null) {
         return;
     }
 
-    // Si existe el contenedor (como 'ofertas-dia' en home), usamos la función global de main.js
-    if (typeof window.mostrarProductos === 'function' && containerId === 'ofertas-dia') {
-        window.mostrarProductos(keyword, containerId);
-    } else {
-        // Fallback o buscador
-        renderSkeletons(keyword, containerId);
-        const productos = await buscarProductos(keyword);
-        renderExternalResults(productos, keyword, containerId);
-    }
+    // EVITAR RECURSIÓN: Si el contenedor es 'ofertas-dia', llamar a la lógica de renderizado, NO a sí misma
+    renderSkeletons(keyword, containerId);
+    const productos = await buscarProductos(keyword);
+    renderExternalResults(productos, keyword, containerId);
 }
 
 /**
