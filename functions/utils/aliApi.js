@@ -1,3 +1,4 @@
+// redeploy 18/05/2026
 /**
  * Firma los parámetros (Regla de Portals: Solo se firman los parámetros comunes ordenados)
  */
