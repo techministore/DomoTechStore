@@ -58,20 +58,7 @@ export async function onRequest(context) {
             throw new Error("No response from AliExpress API");
         }
 
-        // Navegar por la estructura de respuesta de AliExpress
-        const responseData =
-            apiResponse?.aliexpress_affiliate_hotproduct_query_response ||
-            apiResponse?.aliexpress_affiliate_product_query_response ||
-            apiResponse;
-
-        const items =
-            responseData?.resp_result?.result?.products ||
-            responseData?.result?.products ||
-            responseData?.products ||
-            apiResponse?.items ||
-            [];
-
-        // Si la API devuelve un error explícito
+        // Si la API devuelve un error explícito (validación temprana)
         if (apiResponse?.error_response?.msg || apiResponse?.code === 20000) {
             console.error("AliExpress API Error:", apiResponse);
             return new Response(
@@ -94,16 +81,43 @@ export async function onRequest(context) {
             );
         }
 
-        // Limpieza de URLs y mapeo de campos
+        // Navegar por la estructura de respuesta de AliExpress
+        const responseData =
+            apiResponse?.aliexpress_affiliate_hotproduct_query_response ||
+            apiResponse?.aliexpress_affiliate_product_query_response ||
+            apiResponse;
+
+        const items =
+            responseData?.resp_result?.result?.products ||
+            responseData?.result?.products ||
+            responseData?.products ||
+            apiResponse?.items ||
+            [];
+
+        // Validar que items es un array válido
+        if (!Array.isArray(items) || items.length === 0) {
+            return new Response(
+                JSON.stringify({ items: [] }, null, 2),
+                {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Access-Control-Allow-Origin": "*"
+                    }
+                }
+            );
+        }
+
+        // Limpieza de URLs y mapeo de campos con validación
         const cleaned = items.map((p) => ({
-            id: p.product_id,
-            title: p.product_title,
-            image: p.product_main_image_url,
-            price: p.target_sale_price,
-            original_price: p.target_original_price,
-            rating: p.evaluate_rate,
+            id: p.product_id || null,
+            title: p.product_title || "Sin título",
+            image: p.product_main_image_url || "",
+            price: p.target_sale_price || 0,
+            original_price: p.target_original_price || 0,
+            rating: p.evaluate_rate || 0,
             url: cleanAliUrl(p.product_detail_url)
-        }));
+        })).filter(item => item.id); // Filtrar items sin ID válido
 
         return new Response(JSON.stringify({ items: cleaned }, null, 2), {
             status: 200,
