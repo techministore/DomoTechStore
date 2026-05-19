@@ -28,30 +28,40 @@ export async function onRequest(context) {
 
     const TRACKING_ID = env.ALI_TRACKING_ID || "Domotech_2026";
 
-    // Parámetros comunes obligatorios exigidos por AliExpress
+    // Parámetros mínimos requeridos por AliExpress Portals IOP
     const baseParams = {
-        fields: "product_id,product_title,product_main_image_url,target_sale_price,target_original_price,evaluate_rate,product_detail_url",
-        target_currency: "EUR",
-        target_language: "es",
-        country: "ES",
         page_size: "20",
-        tracking_id: TRACKING_ID.toLowerCase().replace(/[^a-z0-9]/g, "")
+        page_no: "1"
     };
 
     let apiResponse;
 
     try {
-        const method = hot
-            ? "aliexpress.affiliate.hotproduct.query"
-            : "aliexpress.affiliate.product.query";
-
-        // Parámetros finales enviados a la API
-        const params = {
-            ...baseParams,
-            keywords: keyword.trim()
-        };
-
-        apiResponse = await callAliExpressApi(method, params, env);
+        const method = hot ? "aliexpress.affiliate.hotproduct.query" : "aliexpress.affiliate.product.query";
+        
+        if (hot) {
+            apiResponse = await callAliExpressApi(
+                method,
+                {
+                    ...baseParams,
+                    keyword: keyword.trim(),
+                    tracking_id: TRACKING_ID,
+                    platform_product_all: "true"
+                },
+                env
+            );
+        } else {
+            apiResponse = await callAliExpressApi(
+                method,
+                {
+                    ...baseParams,
+                    keyword: keyword.trim(),
+                    tracking_id: TRACKING_ID,
+                    sort: "LAST_VOLUME_DESC"
+                },
+                env
+            );
+        }
 
         // Validar que apiResponse existe
         if (!apiResponse) {
