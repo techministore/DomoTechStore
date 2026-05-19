@@ -63,8 +63,6 @@ export async function callAliExpressApi(method, businessParams, env) {
         bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(allParams[key])}`);
     }
 
-    }
-
     bodyParts.push(`sign=${sign}`);
 
     const body = bodyParts.join("&");
@@ -77,4 +75,3 @@ export async function callAliExpressApi(method, businessParams, env) {
 
     return await response.json();
 }
-
