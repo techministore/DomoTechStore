@@ -13,14 +13,27 @@ import { callAliExpressApi } from "../utils/aliApi.js";
      console.log("Keyword:", keyword); 
      console.log("Hot:", hot); 
  
-     const cache = caches.default;
-     const cacheKey = new Request(request.url, request);
+     // 0) Configuración de Caché (Protegida para evitar 500)
+     let cache;
+     try {
+         cache = caches.default;
+     } catch (e) {
+         console.log("[CACHE] Caches.default no está disponible en este entorno");
+     }
+
+     const cacheKey = new Request(url.toString()); // Usamos url.toString() para una key limpia
 
      // 1) Intentar leer desde caché
-     let cached = await cache.match(cacheKey);
-     if (cached) {
-         console.log("[CACHE] Respuesta servida desde caché");
-         return cached;
+     if (cache) {
+         try {
+             let cached = await cache.match(cacheKey);
+             if (cached) {
+                 console.log("[CACHE] Respuesta servida desde caché");
+                 return cached;
+             }
+         } catch (e) {
+             console.log("[CACHE] Error leyendo de caché:", e.message);
+         }
      }
 
      if (!keyword || keyword.trim().length === 0) { 
@@ -126,8 +139,14 @@ import { callAliExpressApi } from "../utils/aliApi.js";
          } 
      }); 
 
-     // 2) Guardar en caché
-     context.waitUntil(cache.put(cacheKey, response.clone()));
+     // 2) Guardar en caché (Protegido)
+     if (cache) {
+         try {
+             context.waitUntil(cache.put(cacheKey, response.clone()));
+         } catch (e) {
+             console.log("[CACHE] Error guardando en caché:", e.message);
+         }
+     }
 
      return response;
  }

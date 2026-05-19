@@ -67,11 +67,36 @@ export async function callAliExpressApi(method, businessParams, env) {
 
     const body = bodyParts.join("&");
 
-    const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body
-    });
+    // 5) Petición POST con x-www-form-urlencoded
+    try {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/x-www-form-urlencoded" 
+            },
+            body
+        });
 
-    return await response.json();
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch (parseError) {
+            console.error("[ALIEXPRESS] Error parseando JSON:", text);
+            return { 
+                error_response: { 
+                    msg: "Respuesta de la API no es un JSON válido", 
+                    code: response.status,
+                    raw: text.substring(0, 200) 
+                } 
+            };
+        }
+    } catch (fetchError) {
+        console.error("[ALIEXPRESS] Error de red (fetch):", fetchError);
+        return { 
+            error_response: { 
+                msg: "Error de red al conectar con AliExpress", 
+                details: fetchError.message 
+            } 
+        };
+    }
 }
