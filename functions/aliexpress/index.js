@@ -13,6 +13,16 @@ import { callAliExpressApi } from "../utils/aliApi.js";
      console.log("Keyword:", keyword); 
      console.log("Hot:", hot); 
  
+     const cache = caches.default;
+     const cacheKey = new Request(request.url, request);
+
+     // 1) Intentar leer desde caché
+     let cached = await cache.match(cacheKey);
+     if (cached) {
+         console.log("[CACHE] Respuesta servida desde caché");
+         return cached;
+     }
+
      if (!keyword || keyword.trim().length === 0) { 
          return new Response( 
              JSON.stringify({ error: "El parámetro 'keyword' es obligatorio", items: [] }, null, 2), 
@@ -107,11 +117,17 @@ import { callAliExpressApi } from "../utils/aliApi.js";
  
      console.log("[ALIEXPRESS] Productos procesados:", cleaned.length); 
  
-     return new Response(JSON.stringify({ items: cleaned }, null, 2), { 
+     const response = new Response(JSON.stringify({ items: cleaned }, null, 2), { 
          status: 200, 
          headers: { 
              "Content-Type": "application/json", 
-             "Access-Control-Allow-Origin": "*" 
+             "Access-Control-Allow-Origin": "*",
+             "Cache-Control": "public, max-age=600"
          } 
      }); 
+
+     // 2) Guardar en caché
+     context.waitUntil(cache.put(cacheKey, response.clone()));
+
+     return response;
  }
