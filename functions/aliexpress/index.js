@@ -44,8 +44,7 @@ export async function onRequest(context) {
                 method,
                 {
                     ...baseParams,
-                    keyword: keyword.trim(),
-                    platform_product_all: "true"
+                    keyword: keyword.trim()
                 },
                 env
             );
