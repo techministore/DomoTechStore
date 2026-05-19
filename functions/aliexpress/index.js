@@ -12,6 +12,20 @@ export async function onRequest(context) {
     const keyword = url.searchParams.get("keyword") || "smart home";
     const hot = url.searchParams.get("hot") === "true";
 
+    // Validación de keyword
+    if (!keyword || keyword.trim().length === 0) {
+        return new Response(
+            JSON.stringify({
+                error: "El parámetro 'keyword' es obligatorio",
+                items: []
+            }, null, 2),
+            {
+                status: 400,
+                headers: { "Content-Type": "application/json" }
+            }
+        );
+    }
+
     const TRACKING_ID = env.ALI_TRACKING_ID || "Domotech_2026";
 
     // Parámetros comunes obligatorios exigidos por AliExpress
@@ -34,10 +48,15 @@ export async function onRequest(context) {
         // Parámetros finales enviados a la API
         const params = {
             ...baseParams,
-            keywords: keyword
+            keywords: keyword.trim()
         };
 
         apiResponse = await callAliExpressApi(method, params, env);
+
+        // Validar que apiResponse existe
+        if (!apiResponse) {
+            throw new Error("No response from AliExpress API");
+        }
 
         // Navegar por la estructura de respuesta de AliExpress
         const responseData =
@@ -53,7 +72,7 @@ export async function onRequest(context) {
             [];
 
         // Si la API devuelve un error explícito
-        if (apiResponse?.error_response || apiResponse?.code) {
+        if (apiResponse?.error_response?.msg || apiResponse?.code === 20000) {
             console.error("AliExpress API Error:", apiResponse);
             return new Response(
                 JSON.stringify(
@@ -69,7 +88,7 @@ export async function onRequest(context) {
                     2
                 ),
                 {
-                    status: 200,
+                    status: 400,
                     headers: { "Content-Type": "application/json" }
                 }
             );
@@ -83,20 +102,27 @@ export async function onRequest(context) {
             price: p.target_sale_price,
             original_price: p.target_original_price,
             rating: p.evaluate_rate,
-            commission: p.commission_rate,
             url: cleanAliUrl(p.product_detail_url)
         }));
 
         return new Response(JSON.stringify({ items: cleaned }, null, 2), {
+            status: 200,
             headers: {
                 "Content-Type": "application/json",
                 "Access-Control-Allow-Origin": "*"
             }
         });
     } catch (error) {
-        return new Response(JSON.stringify({ error: error.message, items: [] }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" }
-        });
+        console.error("Function error:", error);
+        return new Response(
+            JSON.stringify({
+                error: error.message || "Error processing request",
+                items: []
+            }, null, 2),
+            {
+                status: 500,
+                headers: { "Content-Type": "application/json" }
+            }
+        );
     }
 }
