@@ -44,7 +44,6 @@ export async function onRequest(context) {
                 {
                     ...baseParams,
                     keywords: keyword,
-                    sort: "LAST_VOLUME_DESC"
                 },
                 env
             );
