@@ -58,8 +58,11 @@ export async function callAliExpressApi(method, businessParams, env) {
     // 4) Construir body x-www-form-urlencoded
     const bodyParts = [];
 
-    for (const key of Object.keys(allParams)) {
+    const sortedKeys = Object.keys(allParams).sort();
+    for (const key of sortedKeys) {
         bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(allParams[key])}`);
+    }
+
     }
 
     bodyParts.push(`sign=${sign}`);
