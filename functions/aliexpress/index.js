@@ -24,8 +24,6 @@ export async function onRequest(context) {
     tracking_id: TRACKING_ID.toLowerCase().replace(/[^a-z0-9]/g, "")
 };
 
-    };
-
     let apiResponse;
 
     try {
