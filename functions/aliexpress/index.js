@@ -36,7 +36,6 @@ export async function onRequest(context) {
                 {
                     ...baseParams,
                     keywords: keyword,
-                    platform_product_all: "true"
                 },
                 env
             );
