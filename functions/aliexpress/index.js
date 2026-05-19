@@ -17,7 +17,7 @@ export async function onRequest(context) {
     // Parámetros comunes obligatorios exigidos por AliExpress
     const baseParams = {
         category_id: "0",
-        fields: "product_id,product_title,product_main_image_url,target_sale_price,target_original_price,evaluate_rate,last_thirty_days_relevant_shelf_commission,commission_rate,product_detail_url",
+        fields: "product_id,product_title,product_main_image_url,target_sale_price,target_original_price,evaluate_rate,product_detail_url",
         target_currency: "EUR",
         target_language: "es",
         country: "ES",
