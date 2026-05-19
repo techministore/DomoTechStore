@@ -9,81 +9,92 @@ import { callAliExpressApi } from "../utils/aliApi.js";
      const hot = url.searchParams.get("hot") === "true"; 
  
      console.log("────────────────────────────────────────────"); 
-     console.log("[ALIEXPRESS] Nueva petición recibida"); 
-     console.log("URL:", request.url); 
+     console.log("[ALIEXPRESS] Nueva petición"); 
      console.log("Keyword:", keyword); 
-     console.log("Hot products:", hot); 
+     console.log("Hot:", hot); 
  
      if (!keyword || keyword.trim().length === 0) { 
-         console.log("[ERROR] Keyword vacío"); 
          return new Response( 
              JSON.stringify({ error: "El parámetro 'keyword' es obligatorio", items: [] }, null, 2), 
              { status: 400, headers: { "Content-Type": "application/json" } } 
          ); 
      } 
  
-     const method = hot 
-         ? "aliexpress.affiliate.hotproduct.query" 
-         : "aliexpress.affiliate.product.query"; 
- 
-     const params = { 
+     const baseParams = { 
          page_size: "20", 
          page_no: "1", 
          keyword: keyword.trim() 
      }; 
  
-     console.log("[ALIEXPRESS] Método:", method); 
-     console.log("[ALIEXPRESS] Parámetros enviados:", params); 
+     // Métodos oficiales Portals IOP 
+     const METHOD_HOT = "aliexpress.affiliate.hotproduct.query"; 
+     const METHOD_NORMAL = "aliexpress.affiliate.product.query"; 
  
-     try { 
-         const apiResponse = await callAliExpressApi(method, params, env); 
+     // 1) Intento principal 
+     const primaryMethod = hot ? METHOD_HOT : METHOD_NORMAL; 
+     console.log("[ALIEXPRESS] Método primario:", primaryMethod); 
  
-         console.log("[ALIEXPRESS] Respuesta cruda recibida:"); 
-         console.log(JSON.stringify(apiResponse, null, 2)); 
+     let apiResponse = await callAliExpressApi(primaryMethod, baseParams, env); 
  
-         if (!apiResponse) { 
-             console.log("[ERROR] API devolvió null"); 
-             throw new Error("No response from AliExpress API"); 
-         } 
+     console.log("[ALIEXPRESS] Respuesta primario:"); 
+     console.log(JSON.stringify(apiResponse, null, 2)); 
  
-         if (apiResponse.error_response) { 
-             console.log("[ALIEXPRESS] Error detectado en la API:"); 
-             console.log(apiResponse.error_response); 
- 
-             return new Response( 
-                 JSON.stringify({ 
-                     error: apiResponse.error_response.msg || "Error en API AliExpress", 
-                     details: apiResponse, 
-                     items: [] 
-                 }, null, 2), 
-                 { status: 400, headers: { "Content-Type": "application/json" } } 
-             ); 
-         } 
- 
-         const responseData = 
-             apiResponse.aliexpress_affiliate_product_query_response || 
+     // Detectar error en primario 
+     const hasError = 
+         !apiResponse || 
+         apiResponse.error_response || 
+         !( 
              apiResponse.aliexpress_affiliate_hotproduct_query_response || 
-             apiResponse; 
+             apiResponse.aliexpress_affiliate_product_query_response 
+         ); 
  
-         const items = 
-             responseData?.resp_result?.result?.products || 
-             responseData?.result?.products || 
-             []; 
+     // 2) FALLBACK INTELIGENTE 
+     if (hasError && hot) { 
+         console.log("[FALLBACK] Hot Products falló. Intentando búsqueda normal…"); 
  
-         console.log("[ALIEXPRESS] Productos encontrados:", items.length); 
+         apiResponse = await callAliExpressApi(METHOD_NORMAL, baseParams, env); 
  
-         if (!Array.isArray(items) || items.length === 0) { 
-             console.log("[ALIEXPRESS] Sin productos"); 
-             return new Response(JSON.stringify({ items: [] }, null, 2), { 
-                 status: 200, 
-                 headers: { 
-                     "Content-Type": "application/json", 
-                     "Access-Control-Allow-Origin": "*" 
-                 } 
-             }); 
-         } 
+         console.log("[ALIEXPRESS] Respuesta fallback:"); 
+         console.log(JSON.stringify(apiResponse, null, 2)); 
+     } 
  
-         const cleaned = items.map((p) => ({ 
+     // Si sigue fallando → devolver vacío sin romper 
+     if (!apiResponse || apiResponse.error_response) { 
+         console.log("[ALIEXPRESS] Error final. Devolviendo lista vacía."); 
+         return new Response(JSON.stringify({ items: [] }, null, 2), { 
+             status: 200, 
+             headers: { 
+                 "Content-Type": "application/json", 
+                 "Access-Control-Allow-Origin": "*" 
+             } 
+         }); 
+     } 
+ 
+     // Extraer productos 
+     const responseData = 
+         apiResponse.aliexpress_affiliate_product_query_response || 
+         apiResponse.aliexpress_affiliate_hotproduct_query_response || 
+         apiResponse; 
+ 
+     const items = 
+         responseData?.resp_result?.result?.products || 
+         responseData?.result?.products || 
+         []; 
+ 
+     console.log("[ALIEXPRESS] Productos encontrados:", items.length); 
+ 
+     if (!Array.isArray(items) || items.length === 0) { 
+         return new Response(JSON.stringify({ items: [] }, null, 2), { 
+             status: 200, 
+             headers: { 
+                 "Content-Type": "application/json", 
+                 "Access-Control-Allow-Origin": "*" 
+             } 
+         }); 
+     } 
+ 
+     const cleaned = items 
+         .map((p) => ({ 
              id: p.product_id || null, 
              title: p.product_title || "Sin título", 
              image: p.product_main_image_url || "", 
@@ -91,27 +102,16 @@ import { callAliExpressApi } from "../utils/aliApi.js";
              original_price: p.target_original_price || 0, 
              rating: p.evaluate_rate || 0, 
              url: cleanAliUrl(p.product_detail_url) 
-         })).filter(item => item.id); 
+         })) 
+         .filter((item) => item.id); 
  
-         console.log("[ALIEXPRESS] Productos procesados:", cleaned.length); 
+     console.log("[ALIEXPRESS] Productos procesados:", cleaned.length); 
  
-         return new Response(JSON.stringify({ items: cleaned }, null, 2), { 
-             status: 200, 
-             headers: { 
-                 "Content-Type": "application/json", 
-                 "Access-Control-Allow-Origin": "*" 
-             } 
-         }); 
- 
-     } catch (error) { 
-         console.log("[ERROR] Excepción en la Function:", error); 
- 
-         return new Response( 
-             JSON.stringify({ 
-                 error: error.message || "Error processing request", 
-                 items: [] 
-             }, null, 2), 
-             { status: 500, headers: { "Content-Type": "application/json" } } 
-         ); 
-     } 
+     return new Response(JSON.stringify({ items: cleaned }, null, 2), { 
+         status: 200, 
+         headers: { 
+             "Content-Type": "application/json", 
+             "Access-Control-Allow-Origin": "*" 
+         } 
+     }); 
  }
