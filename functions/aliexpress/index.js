@@ -45,7 +45,6 @@ export async function onRequest(context) {
                 {
                     ...baseParams,
                     keyword: keyword.trim(),
-                    tracking_id: TRACKING_ID,
                     platform_product_all: "true"
                 },
                 env
@@ -56,7 +55,6 @@ export async function onRequest(context) {
                 {
                     ...baseParams,
                     keyword: keyword.trim(),
-                    tracking_id: TRACKING_ID,
                     sort: "LAST_VOLUME_DESC"
                 },
                 env
