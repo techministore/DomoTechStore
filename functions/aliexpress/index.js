@@ -1,23 +1,20 @@
 export async function onRequest(context) {
     const { request, env } = context;
 
-    // Obtener parámetros de la URL
-    const url = new URL(request.url);
-    const keyword = url.searchParams.get("keyword") || "smart home";
+    try {
+        const url = new URL(request.url);
+        const keyword = url.searchParams.get("keyword") || "smart home";
 
-    // Validación básica
-    if (!keyword || keyword.trim().length < 2) {
-        return new Response(JSON.stringify({ items: [], error: "Keyword too short" }), {
-            headers: { "Content-Type": "application/json" }
-        });
+        if (!keyword || keyword.trim().length < 2) {
+            return json({ items: [], error: "Keyword too short" });
+        }
+
+        const result = await callAliExpressApi(keyword, env);
+        return json(result);
+
+    } catch (err) {
+        return json({ items: [], error: "Internal Server Error", details: err.message }, 500);
     }
-
-    // Llamada a la API de AliExpress
-    const result = await callAliExpressApi(keyword, env);
-
-    return new Response(JSON.stringify(result), {
-        headers: { "Content-Type": "application/json" }
-    });
 }
 
 /**
@@ -26,15 +23,16 @@ export async function onRequest(context) {
 async function callAliExpressApi(keyword, env) {
     const endpoint = "https://api.aliexpress.com/sync";
 
-    // 🔥 ESTA ES LA PARTE CRÍTICA: tracking_id añadido
+    // 🔥 tracking_id añadido correctamente
     const baseParams = {
         page_size: "20",
         page_no: "1",
         keyword: keyword.trim(),
-        tracking_id: env.ALI_TRACKING_ID   // ← AQUÍ ESTÁ LA CLAVE
+        tracking_id: env.ALI_TRACKING_ID
     };
 
-    const signedParams = signParams(baseParams, env);
+    // 🔥 FIRMA ASÍNCRONA (corregido)
+    const signedParams = await signParams(baseParams, env);
 
     const formBody = new URLSearchParams(signedParams).toString();
 
@@ -46,7 +44,7 @@ async function callAliExpressApi(keyword, env) {
 
     const data = await response.json();
 
-    // Normalizar respuesta
+    // Normalización de respuesta
     const items =
         data?.resp_result?.result?.products ||
         data?.resp_result?.result?.items ||
@@ -56,9 +54,9 @@ async function callAliExpressApi(keyword, env) {
 }
 
 /**
- * Firma los parámetros con SHA256
+ * Firma los parámetros con SHA256 (corregido con async/await)
  */
-function signParams(params, env) {
+async function signParams(params, env) {
     const timestamp = Date.now().toString();
 
     const base = {
@@ -78,21 +76,32 @@ function signParams(params, env) {
 
     const signBase = env.ALI_APP_SECRET + sorted + env.ALI_APP_SECRET;
 
-    const sign = sha256(signBase).toUpperCase();
+    // 🔥 ESTA ES LA CLAVE: esperar el hash
+    const hash = await sha256(signBase);
 
-    return { ...base, sign };
+    return { ...base, sign: hash.toUpperCase() };
 }
 
 /**
- * SHA256 helper
+ * SHA256 helper (asíncrono)
  */
-function sha256(str) {
+async function sha256(str) {
     const encoder = new TextEncoder();
     const data = encoder.encode(str);
 
-    return crypto.subtle.digest("SHA-256", data).then((hash) => {
-        return Array.from(new Uint8Array(hash))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("");
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+
+    return Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+}
+
+/**
+ * Helper para respuestas JSON
+ */
+function json(obj, status = 200) {
+    return new Response(JSON.stringify(obj), {
+        status,
+        headers: { "Content-Type": "application/json" }
     });
 }
