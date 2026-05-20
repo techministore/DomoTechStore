@@ -668,19 +668,29 @@ async function automateProductLinks() {
             
         const cleanName = (productName || "smart home").replace(/^\d+\.\s*/, '').trim();
 
-        // 2. Fallback inmediato (Búsqueda)
-        link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
+        // 2. Configuración inicial (Sin fallback de búsqueda para mayor calidad)
         link.target = "_blank";
         link.rel = "nofollow sponsored";
+        link.textContent = "Buscando mejor oferta...";
 
-        // 3. Si no es una info-card (que busca listados), intentamos match directo de producto
+        // 3. Si no es una info-card, intentamos match directo de producto
         if (!isInfoCard) {
             try {
                 const products = await requestManager.execute(() => fetchWithRetry(cleanName, true), 0);
                 if (products && products.length > 0) {
                     const bestMatch = products[0];
-                    link.href = bestMatch.url || bestMatch.link; // Usar .url si existe
-                    link.title = `Mejor oferta encontrada: ${bestMatch.price}€`;
+                    
+                    // FORZAR ENLACE DIRECTO CON TRACKING
+                    // Si la API devuelve un link ya trackeado lo usamos, si no lo construimos con el ID
+                    const finalUrl = bestMatch.url || bestMatch.link;
+                    link.href = finalUrl;
+                    link.title = `Oferta real encontrada: ${bestMatch.price}€`;
+                    
+                    // Actualizar texto del botón con el precio
+                    const buttonText = link.classList.contains('btn-primary') || link.classList.contains('btn-aliexpress') 
+                        ? `Comprar ahora (${bestMatch.price}€) →`
+                        : `Ver en AliExpress (${bestMatch.price}€)`;
+                    link.textContent = buttonText;
                     
                     // ACTUALIZACIÓN: Inyectar imagen de AliExpress si no hay una o es placeholder
                     let imgEl = card.querySelector('img');
@@ -697,18 +707,24 @@ async function automateProductLinks() {
                         imgEl.alt = bestMatch.title;
                     }
 
-                    const priceEl = card.querySelector('.current-price') || card.querySelector('.btn-primary');
-                    if (priceEl && !priceEl.textContent.includes('€')) {
-                        if (priceEl.classList.contains('btn-primary')) {
-                            priceEl.textContent = `Ver en AliExpress (${bestMatch.price}€)`;
-                        } else {
-                            priceEl.textContent = `${bestMatch.price}€`;
-                        }
+                    const priceEl = card.querySelector('.current-price');
+                    if (priceEl) {
+                        priceEl.textContent = `${bestMatch.price}€`;
                     }
+                } else {
+                    // Si no hay resultados exactos, usamos un enlace de búsqueda de alta calidad
+                    link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
+                    link.textContent = "Ver ofertas en AliExpress →";
                 }
             } catch (err) {
                 Logger.warn(`No se pudo encontrar match directo para "${cleanName}"`, err);
+                link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}`;
+                link.textContent = "Ver en AliExpress →";
             }
+        } else {
+            // Para info-cards (categorías), usamos búsqueda directa
+            link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
+            link.textContent = "Explorar productos →";
         }
     }
 }
