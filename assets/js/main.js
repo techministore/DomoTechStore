@@ -48,7 +48,7 @@ async function checkApiStatus() {
         if (res.ok) {
             console.log("%c[API] Conexión establecida con éxito. AliExpress está operativo.", "color: #4ade80; font-weight: bold;");
         } else if (res.status === 401) {
-            console.warn("%c[API] Error 401: No autorizado. Verifica las claves ALI_APP_KEY y ALI_APP_SECRET en los Secretos de Cloudflare Pages.", "background: #fef08a; color: #854d0e; padding: 4px; border-radius: 4px;");
+            console.warn("%c[API] Error 401: No autorizado. Verifica las claves ALI_APP_KEY y ALI_APP_SECRET en los Secretos de Cloudflare Pages.", "background: #fef08a; color: #854d0e; padding: 4px;");
         } else {
             console.error(`%c[API] Error de conexión: Código ${res.status}`, "color: #f87171;");
         }
@@ -294,7 +294,12 @@ async function loadTopSales(basePath) {
         const allCategories = await categoriesRes.json();
         
         // Usamos las primeras 3 categorías principales para mostrar sus top ventas REALES
-        const selectedCategories = allCategories.slice(0, 3);
+        const selectedCategories = (allCategories || []).slice(0, 3);
+        if (!selectedCategories || selectedCategories.length === 0) {
+            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">No hay categorías disponibles.</p>';
+            return;
+        }
+
         const results = await Promise.all(selectedCategories.map(cat => buscarProductos(cat.keyword, true))); 
         
         let hasContent = false;
@@ -341,7 +346,12 @@ function loadDynamicComparison(basePath) {
     fetch(`${basePath}data/productos.json`)
         .then(r => r.json())
         .then(productos => {
-            const filtered = productos
+            if (!productos || productos.length === 0) {
+                container.innerHTML = '<p style="text-align: center; opacity: 0.5;">No hay productos disponibles para comparar.</p>';
+                return;
+            }
+
+            const filtered = (productos || [])
                 .filter(p => p.categoria === category)
                 .sort((a, b) => b.valoracion - a.valoracion)
                 .slice(0, 3);
@@ -363,7 +373,7 @@ function loadDynamicComparison(basePath) {
                                     <td><strong>${p.nombre}</strong></td>
                                     <td>~${p.precio_aproximado}€</td>
                                     <td>⭐ ${p.valoracion}/5</td>
-                                    <td><a href="${formatAffiliateLink(p.enlace, 'Domotech_2026')}" class="btn-aliexpress" style="padding: 8px 15px; font-size: 0.8rem; margin: 0;" target="_blank">Comprar →</a></td>
+                                    <td><a href="${formatAffiliateLink(p.enlace, 'Domotech_2026')}" class="btn-aliexpress" style="padding: 8px 15px; font-size: 0.8rem; margin: 0;" target="_blank" onclick="trackClick('${p.id}', 'comparison')">Ver Oferta →</a></td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -393,7 +403,12 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
     fetch(url)
         .then(r => r.json())
         .then(data => {
-            let rawProducts = data.filter(filterFn);
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">No hay productos disponibles en este momento.</p>';
+                return;
+            }
+
+            let rawProducts = (data || []).filter(filterFn);
             if (limit) rawProducts = rawProducts.slice(0, limit);
 
             if (rawProducts.length === 0) {
@@ -445,12 +460,14 @@ function renderProductGrid(containerId, url, filterFn, limit, showDiscount = fal
  * Inyecta Schema.org JSON-LD para los productos cargados
  */
 function injectProductSchema(products) {
+    if (!products || products.length === 0) return;
+
     const script = document.createElement('script');
     script.type = 'application/ld+json';
     
     const schema = {
         "@context": "https://schema.org",
-        "@graph": products.map(p => ({
+        "@graph": (products || []).map(p => ({
             "@type": "Product",
             "name": p.nombre,
             "description": p.descripcion,
