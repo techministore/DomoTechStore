@@ -1,6 +1,7 @@
 import { callAliExpressApi } from "../utils/aliApi.js"; 
  import { cleanAliUrl } from "../utils/cleanUrl.js"; 
  import { handleOptions, corsHeaders } from "../utils/cors.js";
+ import { parseAliExpressItem } from "../utils/parseAliExpress.js";
 
  /**
   * Cloudflare Pages Function: /aliexpress
@@ -50,10 +51,12 @@ import { callAliExpressApi } from "../utils/aliApi.js";
          ); 
      } 
  
-     const baseParams = { 
+     // Parámetros de negocio (Incluyendo tracking_id para afiliados)
+     const businessParams = { 
          page_size: "20", 
          page_no: "1", 
-         keyword: keyword.trim() 
+         keyword: keyword.trim(),
+         tracking_id: env.ALI_TRACKING_ID || "Domotech_2026"
      }; 
  
      const METHOD_HOT = "aliexpress.affiliate.hotproduct.query"; 
@@ -63,9 +66,9 @@ import { callAliExpressApi } from "../utils/aliApi.js";
      const primaryMethod = hot ? METHOD_HOT : METHOD_NORMAL; 
      console.log("[ALIEXPRESS] Llamando método:", primaryMethod); 
  
-     let apiResponse = await callAliExpressApi(primaryMethod, baseParams, env); 
+     let apiResponse = await callAliExpressApi(primaryMethod, businessParams, env); 
  
-     // Detectar error en primario 
+     // 2) FALLBACK INTELIGENTE 
      const hasError = 
          !apiResponse || 
          apiResponse.error_response || 
@@ -74,17 +77,18 @@ import { callAliExpressApi } from "../utils/aliApi.js";
              apiResponse.aliexpress_affiliate_product_query_response 
          ); 
  
-     // 2) FALLBACK INTELIGENTE 
      if (hasError && hot) { 
-         console.log("[FALLBACK] Hot Products falló. Intentando búsqueda normal..."); 
-         apiResponse = await callAliExpressApi(METHOD_NORMAL, baseParams, env); 
+         console.log("[FALLBACK] Hot Products falló o vacío. Intentando búsqueda normal..."); 
+         apiResponse = await callAliExpressApi(METHOD_NORMAL, businessParams, env); 
      } 
  
      // 3) Procesar Respuesta Final
+     console.log("[ALIEXPRESS] Raw Response:", JSON.stringify(apiResponse, null, 2));
+
      if (!apiResponse || apiResponse.error_response) { 
          console.error("[ALIEXPRESS] Error final:", apiResponse?.error_response); 
          return new Response(JSON.stringify({ items: [], details: apiResponse }), { 
-             status: 200, // Devolvemos 200 con lista vacía para no romper el front
+             status: 200, 
              headers: { ...corsHeaders, "Content-Type": "application/json" } 
          }); 
      } 
@@ -97,21 +101,15 @@ import { callAliExpressApi } from "../utils/aliApi.js";
      const items = 
          responseData?.resp_result?.result?.products || 
          responseData?.result?.products || 
+         responseData?.resp_result?.result?.items ||
          []; 
  
+     // Normalización robusta usando parseAliExpressItem
      const cleaned = items 
-         .map((p) => ({ 
-             id: p.product_id || null, 
-             title: p.product_title || "Sin título", 
-             image: p.product_main_image_url || "", 
-             price: p.target_sale_price || 0, 
-             original_price: p.target_original_price || 0, 
-             rating: p.evaluate_rate || 0, 
-             url: cleanAliUrl(p.product_detail_url) 
-         })) 
+         .map((item) => parseAliExpressItem(item)) 
          .filter((item) => item.id); 
  
-     console.log("[ALIEXPRESS] Productos encontrados:", cleaned.length); 
+     console.log("[ALIEXPRESS] Productos procesados:", cleaned.length); 
  
      const response = new Response(JSON.stringify({ items: cleaned }, null, 2), { 
          status: 200, 
