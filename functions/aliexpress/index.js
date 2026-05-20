@@ -51,11 +51,19 @@ import { callAliExpressApi } from "../utils/aliApi.js";
          ); 
      } 
  
+     // Optimización de la Keyword: Limpiar y limitar longitud para evitar errores de API
+     const cleanKeyword = keyword
+         .trim()
+         .replace(/[^\w\s]/gi, '') // Eliminar caracteres especiales
+         .split(/\s+/)
+         .slice(0, 5) // Limitar a las primeras 5 palabras para mayor precisión
+         .join(' ');
+
      // Parámetros de negocio (Incluyendo tracking_id para afiliados)
      const businessParams = { 
          page_size: "20", 
          page_no: "1", 
-         keyword: keyword.trim(),
+         keyword: cleanKeyword,
          tracking_id: env.ALI_TRACKING_ID || "Domotech_2026"
      }; 
  

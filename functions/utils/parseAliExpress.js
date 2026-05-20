@@ -1,24 +1,36 @@
 /**
  * Utilidad para normalizar los datos de la API de AliExpress
+ * Maneja múltiples variantes de nombres de campos de la API de Portals
  */
 export function parseAliExpressItem(item) {
-    const finalPrice = item.sale_price || item.price;
-    const oldPrice = item.original_price || item.old_price || null;
-    const finalImage = item.image_url || item.product_main_image_url || item.image || item.product_small_image_urls?.[0];
-    const finalLink = item.promotion_link || item.product_url || item.link;
+    if (!item) return null;
+
+    // 1. Extraer ID (campo crítico)
+    const id = item.product_id || item.item_id || item.id || (item.product_detail_url ? item.product_detail_url.match(/(\d+)\.html/)?.[1] : null);
+
+    // 2. Extraer Título
+    const title = item.product_title || item.title || "Producto de AliExpress";
+
+    // 3. Extraer Precios (con fallback a 0)
+    const price = item.target_sale_price || item.sale_price || item.price || 0;
+    const oldPrice = item.target_original_price || item.original_price || item.old_price || null;
+
+    // 4. Extraer Imagen (múltiples fallbacks)
+    const image = item.product_main_image_url || item.image_url || item.image || (item.product_small_image_urls && item.product_small_image_urls[0]) || "";
+
+    // 5. Extraer Enlace
+    const link = item.product_detail_url || item.promotion_link || item.product_url || item.link || "";
 
     return {
-        id: item.item_id || item.id,
-        title: item.title,
-        price: finalPrice,
+        id,
+        title,
+        price,
         old_price: oldPrice,
-        image: finalImage,
-        link: finalLink,
+        image,
+        link,
         shop: "AliExpress",
-        rating: item.rating || null,
-        sales: item.sales || 0,
-        shipping: item.shipping || null,
-        commission: item.commission || null
+        rating: item.evaluate_rate || item.rating || null,
+        sales: item.last_thirty_days_relevant_shelf_commission || item.sales || 0
     };
 }
 
