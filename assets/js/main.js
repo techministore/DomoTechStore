@@ -657,27 +657,57 @@ async function automateProductLinks() {
     const trackingId = "Domotech_2026";
 
     for (const link of emptyLinks) {
+        // 1. Obtener el nombre del producto o categoría del contexto
         const card = link.closest('.card') || link.parentElement;
+        
+        // Si es una "clickable-info-card", usamos el texto descriptivo para una búsqueda más precisa
         const isInfoCard = link.classList.contains('clickable-info-card');
-        const productName = isInfoCard
-            ? card.querySelector('p')?.textContent
+        const productName = isInfoCard 
+            ? card.querySelector('p')?.textContent 
             : card.querySelector('h2, h3')?.textContent;
-
+            
         const cleanName = (productName || "smart home").replace(/^\d+\.\s*/, '').trim();
+
+        // 2. Fallback inmediato (Búsqueda)
         link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
         link.target = "_blank";
         link.rel = "nofollow sponsored";
 
+        // 3. Si no es una info-card (que busca listados), intentamos match directo de producto
         if (!isInfoCard) {
             try {
                 const products = await requestManager.execute(() => fetchWithRetry(cleanName, true), 0);
                 if (products && products.length > 0) {
                     const bestMatch = products[0];
-                    link.href = bestMatch.link || bestMatch.url || link.href;
-                    link.title = `Mejor oferta: ${bestMatch.price}€`;
+                    link.href = bestMatch.url || bestMatch.link; // Usar .url si existe
+                    link.title = `Mejor oferta encontrada: ${bestMatch.price}€`;
+                    
+                    // ACTUALIZACIÓN: Inyectar imagen de AliExpress si no hay una o es placeholder
+                    let imgEl = card.querySelector('img');
+                    if (!imgEl) {
+                        imgEl = document.createElement('img');
+                        imgEl.style.width = '100%';
+                        imgEl.style.borderRadius = '8px';
+                        imgEl.style.marginBottom = '15px';
+                        card.insertBefore(imgEl, card.firstChild);
+                    }
+                    
+                    if (bestMatch.image && (!imgEl.src || imgEl.src.includes('placeholder') || imgEl.src.includes('unsplash'))) {
+                        imgEl.src = bestMatch.image;
+                        imgEl.alt = bestMatch.title;
+                    }
+
+                    const priceEl = card.querySelector('.current-price') || card.querySelector('.btn-primary');
+                    if (priceEl && !priceEl.textContent.includes('€')) {
+                        if (priceEl.classList.contains('btn-primary')) {
+                            priceEl.textContent = `Ver en AliExpress (${bestMatch.price}€)`;
+                        } else {
+                            priceEl.textContent = `${bestMatch.price}€`;
+                        }
+                    }
                 }
             } catch (err) {
-                Logger.warn(`No direct match for "${cleanName}"`, err);
+                Logger.warn(`No se pudo encontrar match directo para "${cleanName}"`, err);
             }
         }
     }

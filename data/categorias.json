@@ -40,5 +40,12 @@
         "slug": "controladores-asistentes",
         "keyword": "zigbee gateway hub home assistant universal remote ir",
         "descripcion_corta": "El cerebro de tu Smart Home: gestiona todo mediante la voz o pantallas táctiles."
+    },
+    {
+        "id": 7,
+        "nombre": "Gaming y Setup Pro",
+        "slug": "gaming-setup-pro",
+        "keyword": "gaming setup accessories rgb lights mechanical keyboard mouse",
+        "descripcion_corta": "Accesorios y periféricos de alto rendimiento para elevar tu experiencia de juego y trabajo."
     }
 ]
