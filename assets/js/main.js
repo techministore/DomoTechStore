@@ -742,9 +742,14 @@ async function checkApiStatus() {
     }
 }
 
-function trackClick(productId, provider) {
+/**
+ * Sistema de estadísticas de clics y conversiones (100% Autónomo)
+ */
+function trackClick(productId, provider, contextInfo = null) {
     try {
-        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": [], "total": 0}');
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": [], "total": 0, "interests": {}}');
+        
+        // Registrar el click
         stats.clicks.push({
             id: productId,
             provider: provider,
@@ -753,13 +758,91 @@ function trackClick(productId, provider) {
         });
         stats.total++;
 
+        // Registrar interés (keyword o categoría)
+        if (contextInfo) {
+            stats.interests[contextInfo] = (stats.interests[contextInfo] || 0) + 1;
+        } else {
+            // Si no hay contexto, intentar deducirlo de la URL
+            const path = window.location.pathname;
+            if (path.includes('/categorias/')) {
+                const cat = path.split('/').pop().replace('.html', '');
+                stats.interests[cat] = (stats.interests[cat] || 0) + 1;
+            }
+        }
+        
         if (stats.clicks.length > 100) stats.clicks.shift();
+        
         localStorage.setItem('domotech_stats', JSON.stringify(stats));
-        Logger.debug(`Click tracked: ${productId} (${provider})`);
+        Logger.debug(`Click registrado: ${productId} | Interés: ${contextInfo || 'Deducido'}`);
     } catch (e) {
-        Logger.error('Error tracking click:', e);
+        Logger.error("Error registrando click:", e);
     }
 }
+
+/**
+ * Carga recomendaciones personalizadas basadas en el comportamiento del usuario
+ */
+async function loadPersonalizedRecommendations(basePath) {
+    const container = document.getElementById('recomendaciones-usuario');
+    if (!container) return;
+
+    try {
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{}');
+        const interests = stats.interests || {};
+        
+        // Obtener el interés principal
+        const sortedInterests = Object.entries(interests).sort((a, b) => b[1] - a[1]);
+        
+        let keyword = "smart home gadgets"; // Fallback por defecto
+        let title = "Recomendaciones para tu hogar";
+
+        if (sortedInterests.length > 0) {
+            const topInterest = sortedInterests[0][0];
+            keyword = topInterest.replace(/-/g, ' ');
+            title = `Basado en tu interés en "${keyword.toUpperCase()}"`;
+        }
+
+        const titleEl = document.getElementById('recomendaciones-titulo');
+        if (titleEl) titleEl.textContent = title;
+
+        // Usar fetchWithRetry (la función real de la API)
+        const products = await fetchWithRetry(keyword, true);
+        if (products && products.length > 0) {
+            container.innerHTML = products.slice(0, 4).map(p => {
+                const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
+                return `
+                <article class="card product-card" style="position: relative;">
+                    ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
+                    <div class="product-image-container">
+                        <img src="${p.image || CONFIG.FALLBACK_PLACEHOLDER}" alt="${p.title}" loading="lazy" onerror="this.src='${CONFIG.FALLBACK_PLACEHOLDER}'">
+                    </div>
+                    <h3>${p.title}</h3>
+                    <div class="price-container">
+                        <span class="current-price">${p.price}€</span>
+                    </div>
+                    <a href="${p.url || p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress', '${keyword}')">Ver Oferta →</a>
+                </article>
+                `;
+            }).join('');
+        } else {
+            if (container.parentElement) container.parentElement.style.display = 'none';
+        }
+    } catch (e) {
+        Logger.error("Error cargando recomendaciones:", e);
+    }
+}
+
+// Conexión automática con AliExpress (Ofertas del día y Recomendaciones)
+document.addEventListener("DOMContentLoaded", () => {
+    if (typeof mostrarProductos === 'function') {
+        mostrarProductos("smart home", "ofertas-dia");
+    }
+    
+    // Cargar recomendaciones después de un breve delay para no saturar la carga inicial
+    setTimeout(() => {
+        loadPersonalizedRecommendations('/');
+    }, 1500);
+});
 
 // ============================================================================
 // 📊 MONITORING & DEBUG CONSOLE
