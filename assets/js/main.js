@@ -668,7 +668,7 @@ async function automateProductLinks() {
             
         const cleanName = (productName || "smart home").replace(/^\d+\.\s*/, '').trim();
 
-        // 2. Configuración inicial (Sin fallback de búsqueda para mayor calidad)
+        // 2. Configuración inicial
         link.target = "_blank";
         link.rel = "nofollow sponsored";
         link.textContent = "Buscando mejor oferta...";
@@ -677,53 +677,54 @@ async function automateProductLinks() {
         if (!isInfoCard) {
             try {
                 const products = await requestManager.execute(() => fetchWithRetry(cleanName, true), 0);
+                
+                // REGLA DE ORO: Solo si hay resultados y tienen un ID válido
                 if (products && products.length > 0) {
                     const bestMatch = products[0];
-                    
-                    // FORZAR ENLACE DIRECTO CON TRACKING
-                    // Si la API devuelve un link ya trackeado lo usamos, si no lo construimos con el ID
-                    const finalUrl = bestMatch.url || bestMatch.link;
-                    link.href = finalUrl;
-                    link.title = `Oferta real encontrada: ${bestMatch.price}€`;
-                    
-                    // Actualizar texto del botón con el precio
-                    const buttonText = link.classList.contains('btn-primary') || link.classList.contains('btn-aliexpress') 
-                        ? `Comprar ahora (${bestMatch.price}€) →`
-                        : `Ver en AliExpress (${bestMatch.price}€)`;
-                    link.textContent = buttonText;
-                    
-                    // ACTUALIZACIÓN: Inyectar imagen de AliExpress si no hay una o es placeholder
-                    let imgEl = card.querySelector('img');
-                    if (!imgEl) {
-                        imgEl = document.createElement('img');
-                        imgEl.style.width = '100%';
-                        imgEl.style.borderRadius = '8px';
-                        imgEl.style.marginBottom = '15px';
-                        card.insertBefore(imgEl, card.firstChild);
+                    const productId = bestMatch.id || (bestMatch.link ? bestMatch.link.match(/\/item\/(\d+)\.html/)?.[1] : null);
+
+                    if (productId) {
+                        // GENERAR PROMOTION LINK (s.click) vía Backend
+                        try {
+                            const linkRes = await fetch(`${CONFIG.API_ENDPOINT}?linkOnly=true&productId=${productId}`);
+                            const linkData = await linkRes.json();
+                            
+                            if (linkData.promotion_link) {
+                                link.href = linkData.promotion_link;
+                                link.title = `Oferta real verificada: ${bestMatch.price}€`;
+                                link.textContent = `Comprar ahora (${bestMatch.price}€) →`;
+                            } else {
+                                throw new Error("No promotion link");
+                            }
+                        } catch (linkErr) {
+                            // Fallback seguro si falla la generación del s.click
+                            link.href = bestMatch.url || bestMatch.link;
+                            link.textContent = `Ver en AliExpress (${bestMatch.price}€)`;
+                        }
+                    } else {
+                        // NO hay product_id -> NO hay enlace directo
+                        link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}`;
+                        link.textContent = "Ver ofertas similares →";
                     }
-                    
-                    if (bestMatch.image && (!imgEl.src || imgEl.src.includes('placeholder') || imgEl.src.includes('unsplash'))) {
+
+                    // Actualizar imagen si es necesario
+                    let imgEl = card.querySelector('img');
+                    if (bestMatch.image && imgEl && (imgEl.src.includes('placeholder') || imgEl.src.includes('unsplash'))) {
                         imgEl.src = bestMatch.image;
                         imgEl.alt = bestMatch.title;
                     }
-
-                    const priceEl = card.querySelector('.current-price');
-                    if (priceEl) {
-                        priceEl.textContent = `${bestMatch.price}€`;
-                    }
                 } else {
-                    // Si no hay resultados exactos, usamos un enlace de búsqueda de alta calidad
-                    link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
-                    link.textContent = "Ver ofertas en AliExpress →";
+                    link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}`;
+                    link.textContent = "Ver en AliExpress →";
                 }
             } catch (err) {
-                Logger.warn(`No se pudo encontrar match directo para "${cleanName}"`, err);
+                Logger.warn(`Error en automatización para "${cleanName}"`, err);
                 link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}`;
                 link.textContent = "Ver en AliExpress →";
             }
         } else {
-            // Para info-cards (categorías), usamos búsqueda directa
-            link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
+            // Categorías usan búsqueda controlada
+            link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}`;
             link.textContent = "Explorar productos →";
         }
     }

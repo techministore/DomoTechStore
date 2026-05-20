@@ -5,7 +5,7 @@ import { callAliExpressApi } from "../utils/aliApi.js";
 
  /**
   * Cloudflare Pages Function: /aliexpress
-  * Maneja la búsqueda de productos en AliExpress con caché y fallback.
+  * Maneja la búsqueda de productos en AliExpress con caché y generación de enlaces de afiliados directos.
   */
  export async function onRequest(context) { 
      const { request, env } = context; 
@@ -17,9 +17,42 @@ import { callAliExpressApi } from "../utils/aliApi.js";
 
      const keyword = url.searchParams.get("keyword") || "smart home"; 
      const hot = url.searchParams.get("hot") === "true"; 
- 
+     const linkOnly = url.searchParams.get("linkOnly") === "true";
+     const productId = url.searchParams.get("productId");
+
      console.log("────────────────────────────────────────────"); 
-     console.log("[ALIEXPRESS] Nueva petición:", keyword, "(Hot:", hot, ")"); 
+     
+     // 1) MODO GENERACIÓN DE ENLACE DIRECTO (S.CLICK)
+     if (linkOnly && productId) {
+        console.log("[ALIEXPRESS] Generando enlace de afiliado para ID:", productId);
+        try {
+            const productUrl = `https://www.aliexpress.com/item/${productId}.html`;
+            const businessParams = {
+                tracking_id: env.ALI_TRACKING_ID || "Domotech_2026",
+                promotion_link_type: "0", // 0 para s.click
+                source_values: productUrl
+            };
+
+            const linkRes = await callAliExpressApi("aliexpress.affiliate.link.generate", businessParams, env);
+            const promotionLink = linkRes?.aliexpress_affiliate_link_generate_response?.resp_result?.result?.promotion_links?.promotion_link?.[0]?.promotion_link;
+
+            if (promotionLink) {
+                return new Response(JSON.stringify({ promotion_link: promotionLink }), {
+                    status: 200,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" }
+                });
+            }
+            throw new Error("No se pudo generar el enlace de promoción");
+        } catch (err) {
+            console.error("[ERROR] Fallo al generar link:", err.message);
+            return new Response(JSON.stringify({ error: err.message }), {
+                status: 500,
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+     }
+
+     console.log("[ALIEXPRESS] Nueva búsqueda:", keyword, "(Hot:", hot, ")"); 
  
      // 0) Configuración de Caché
      let cache;
@@ -51,15 +84,15 @@ import { callAliExpressApi } from "../utils/aliApi.js";
          ); 
      } 
  
-     // Optimización de la Keyword: Limpiar y limitar longitud para evitar errores de API
+     // Optimización de la Keyword
      const cleanKeyword = keyword
          .trim()
-         .replace(/[^\w\s]/gi, '') // Eliminar caracteres especiales
+         .replace(/[^\w\s]/gi, '')
          .split(/\s+/)
-         .slice(0, 5) // Limitar a las primeras 5 palabras para mayor precisión
+         .slice(0, 5)
          .join(' ');
 
-     // Parámetros de negocio (Incluyendo tracking_id para afiliados)
+     // Parámetros de negocio
      const businessParams = { 
          page_size: "20", 
          page_no: "1", 
@@ -91,8 +124,6 @@ import { callAliExpressApi } from "../utils/aliApi.js";
      } 
  
      // 3) Procesar Respuesta Final
-     console.log("[ALIEXPRESS] Raw Response:", JSON.stringify(apiResponse, null, 2));
-
      if (!apiResponse || apiResponse.error_response) { 
          console.error("[ALIEXPRESS] Error final:", apiResponse?.error_response); 
          return new Response(JSON.stringify({ items: [], details: apiResponse }), { 
@@ -112,7 +143,7 @@ import { callAliExpressApi } from "../utils/aliApi.js";
          responseData?.resp_result?.result?.items ||
          []; 
  
-     // Normalización robusta usando parseAliExpressItem
+     // Normalización robusta
      const cleaned = items 
          .map((item) => parseAliExpressItem(item)) 
          .filter((item) => item.id); 
