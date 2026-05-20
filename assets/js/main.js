@@ -1,117 +1,575 @@
 /**
- * DomoTechStore - Main JavaScript
- * Maneja la carga de componentes, navegación y productos destacados.
+ * DomoTechStore - Main JavaScript v3.0 Production
+ * ⚡ Advanced request management, error handling, and fallback system
+ * Designed to never crash and always show content
  */
 
+// ============================================================================
+// 🔧 CONFIGURACIÓN GLOBAL & STATE MANAGEMENT
+// ============================================================================
+
+const CONFIG = {
+    // API Configuration
+    API_ENDPOINT: '/aliexpress',
+    API_TIMEOUT: 8000, // 8 segundos
+    MAX_RETRIES: 2,
+    RETRY_DELAY: 1000, // ms exponencial
+    
+    // Cache Configuration
+    CACHE_TTL: 15 * 60 * 1000, // 15 minutos
+    CACHE_MAX_SIZE: 50 * 1024 * 1024, // 50 MB localStorage max
+    
+    // Request Management
+    MAX_CONCURRENT_REQUESTS: 3,
+    REQUEST_QUEUE_TIMEOUT: 30000, // 30 segundos antes de timeout
+    DEBOUNCE_DELAY: 300, // ms
+    
+    // Fallback Data
+    FALLBACK_PRODUCTS_COUNT: 4,
+    FALLBACK_PLACEHOLDER: 'https://placehold.co/400x400/1e293b/white?text=Tech+Gadget',
+    
+    // Monitoring
+    ENABLE_DIAGNOSTICS: true,
+    LOG_LEVEL: 'info' // 'debug', 'info', 'warn', 'error'
+};
+
+// Estado global
+const STATE = {
+    requestQueue: [],
+    activeRequests: new Map(),
+    failedEndpoints: new Map(),
+    cacheStats: { hits: 0, misses: 0, size: 0 },
+    apiHealth: { status: 'unknown', lastCheck: null, failureCount: 0 },
+    circuitBreaker: { isOpen: false, failureThreshold: 5, resetTimeout: 60000 },
+};
+
+// ============================================================================
+// 📊 LOGGING & DIAGNOSTICS
+// ============================================================================
+
+class Logger {
+    static log(level, message, data = null) {
+        if (!CONFIG.ENABLE_DIAGNOSTICS) return;
+        
+        const timestamp = new Date().toISOString();
+        const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
+        const color = {
+            debug: '#6366f1',
+            info: '#3b82f6',
+            warn: '#f59e0b',
+            error: '#ef4444'
+        }[level] || '#808080';
+        
+        if (level === 'error') {
+            console.error(`%c${prefix} ${message}`, `color: ${color}; font-weight: bold;`, data);
+        } else {
+            console.log(`%c${prefix} ${message}`, `color: ${color}; font-weight: bold;`, data);
+        }
+    }
+    
+    static debug(msg, data) { this.log('debug', msg, data); }
+    static info(msg, data) { this.log('info', msg, data); }
+    static warn(msg, data) { this.log('warn', msg, data); }
+    static error(msg, data) { this.log('error', msg, data); }
+}
+
+// ============================================================================
+// 🔄 REQUEST QUEUE & CONCURRENCY MANAGER
+// ============================================================================
+
+class RequestManager {
+    constructor() {
+        this.queue = [];
+        this.active = 0;
+    }
+
+    async execute(fn, priority = 0) {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ fn, resolve, reject, priority, createdAt: Date.now() });
+            this.queue.sort((a, b) => b.priority - a.priority);
+            this.process();
+        });
+    }
+
+    async process() {
+        if (this.active >= CONFIG.MAX_CONCURRENT_REQUESTS || this.queue.length === 0) return;
+
+        this.active++;
+        const { fn, resolve, reject, createdAt } = this.queue.shift();
+
+        // Timeout check
+        const elapsed = Date.now() - createdAt;
+        if (elapsed > CONFIG.REQUEST_QUEUE_TIMEOUT) {
+            Logger.warn('Request timeout (queue)', { elapsed });
+            this.active--;
+            reject(new Error('Request queue timeout'));
+            this.process();
+            return;
+        }
+
+        try {
+            const result = await fn();
+            resolve(result);
+        } catch (error) {
+            reject(error);
+        } finally {
+            this.active--;
+            this.process();
+        }
+    }
+
+    getStats() {
+        return { queued: this.queue.length, active: this.active };
+    }
+}
+
+const requestManager = new RequestManager();
+
+// ============================================================================
+// 💾 ADVANCED CACHE SYSTEM
+// ============================================================================
+
+class CacheManager {
+    constructor() {
+        this.prefix = 'domotech_cache_';
+        this.metaPrefix = 'domotech_meta_';
+        this.cleanupOldEntries();
+    }
+
+    set(key, data, ttl = CONFIG.CACHE_TTL) {
+        try {
+            const cacheData = {
+                data,
+                timestamp: Date.now(),
+                ttl,
+                size: JSON.stringify(data).length
+            };
+
+            localStorage.setItem(this.prefix + key, JSON.stringify(cacheData));
+            Logger.debug(`Cache SET: ${key}`, { ttl: ttl / 1000 / 60 + ' min' });
+            STATE.cacheStats.misses++;
+        } catch (e) {
+            if (e.name === 'QuotaExceededError') {
+                Logger.warn('Cache storage full, clearing old entries');
+                this.clearOldest();
+                this.set(key, data, ttl); // Retry
+            } else {
+                Logger.error('Cache set error', e);
+            }
+        }
+    }
+
+    get(key) {
+        try {
+            const cached = localStorage.getItem(this.prefix + key);
+            if (!cached) return null;
+
+            const cacheData = JSON.parse(cached);
+            const isExpired = Date.now() - cacheData.timestamp > cacheData.ttl;
+
+            if (isExpired) {
+                localStorage.removeItem(this.prefix + key);
+                Logger.debug(`Cache EXPIRED: ${key}`);
+                return null;
+            }
+
+            Logger.debug(`Cache HIT: ${key}`);
+            STATE.cacheStats.hits++;
+            return cacheData.data;
+        } catch (e) {
+            Logger.error('Cache get error', e);
+            return null;
+        }
+    }
+
+    remove(key) {
+        localStorage.removeItem(this.prefix + key);
+    }
+
+    clearOldest() {
+        const entries = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith(this.prefix)) {
+                const data = JSON.parse(localStorage.getItem(key));
+                entries.push({ key, timestamp: data.timestamp });
+            }
+        }
+        entries.sort((a, b) => a.timestamp - b.timestamp);
+        entries.slice(0, Math.floor(entries.length / 2)).forEach(e => {
+            localStorage.removeItem(e.key);
+        });
+    }
+
+    cleanupOldEntries() {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key.startsWith(this.prefix)) {
+                const data = JSON.parse(localStorage.getItem(key));
+                if (Date.now() - data.timestamp > data.ttl) {
+                    localStorage.removeItem(key);
+                }
+            }
+        }
+    }
+
+    getStats() {
+        let totalSize = 0;
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith(this.prefix)) {
+                totalSize += localStorage.getItem(key).length;
+            }
+        }
+        STATE.cacheStats.size = totalSize;
+        return STATE.cacheStats;
+    }
+}
+
+const cacheManager = new CacheManager();
+
+// ============================================================================
+// 🔌 CIRCUIT BREAKER PATTERN
+// ============================================================================
+
+class CircuitBreaker {
+    constructor(threshold = 5, timeout = 60000) {
+        this.failureCount = 0;
+        this.successCount = 0;
+        this.threshold = threshold;
+        this.timeout = timeout;
+        this.state = 'closed'; // closed, open, half-open
+        this.nextAttempt = Date.now();
+    }
+
+    recordSuccess() {
+        this.failureCount = 0;
+        if (this.state === 'half-open') {
+            this.state = 'closed';
+            Logger.info('Circuit breaker CLOSED');
+        }
+    }
+
+    recordFailure() {
+        this.failureCount++;
+        if (this.failureCount >= this.threshold) {
+            this.state = 'open';
+            this.nextAttempt = Date.now() + this.timeout;
+            Logger.warn('Circuit breaker OPEN', { retryAt: this.timeout / 1000 + 's' });
+        }
+    }
+
+    allowRequest() {
+        if (this.state === 'closed') return true;
+        if (this.state === 'open' && Date.now() > this.nextAttempt) {
+            this.state = 'half-open';
+            Logger.info('Circuit breaker HALF-OPEN (testing)');
+            return true;
+        }
+        return false;
+    }
+
+    isOpen() {
+        return this.state === 'open' && Date.now() < this.nextAttempt;
+    }
+}
+
+const circuitBreaker = new CircuitBreaker();
+
+// ============================================================================
+// 🌐 API COMMUNICATION WITH FALLBACKS
+// ============================================================================
+
+async function fetchWithRetry(keyword, isHot = false, retryCount = 0) {
+    // Circuit breaker check
+    if (!circuitBreaker.allowRequest()) {
+        Logger.warn('Circuit breaker is OPEN, skipping API call');
+        return null;
+    }
+
+    const cacheKey = `search_${keyword.toLowerCase().trim().replace(/\s+/g, '_')}${isHot ? '_hot' : ''}`;
+
+    try {
+        // Intentar obtener de caché primero
+        const cachedData = cacheManager.get(cacheKey);
+        if (cachedData) {
+            Logger.info(`Using cached data for: "${keyword}"`);
+            return cachedData;
+        }
+
+        // Ejecutar petición con timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CONFIG.API_TIMEOUT);
+
+        const url = `${CONFIG.API_ENDPOINT}?keyword=${encodeURIComponent(keyword)}${isHot ? '&hot=true' : ''}`;
+        
+        const response = await fetch(url, {
+            signal: controller.signal,
+            headers: { 'Accept': 'application/json' }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                Logger.error('API 401: Check ALI_APP_KEY and ALI_APP_SECRET');
+                circuitBreaker.recordFailure();
+                return null;
+            }
+            throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+            Logger.error('API returned error:', data.error);
+            return null;
+        }
+
+        const items = data.result?.items || data.items || [];
+        
+        if (items.length > 0) {
+            cacheManager.set(cacheKey, items);
+            circuitBreaker.recordSuccess();
+            Logger.info(`API Success: ${items.length} products received`);
+            return items;
+        } else if (isHot) {
+            // Fallback: retry sin flag 'hot'
+            Logger.info(`No hot products for "${keyword}", retrying normal search...`);
+            return fetchWithRetry(keyword, false, retryCount);
+        }
+
+        return null;
+    } catch (error) {
+        Logger.warn(`API Error (attempt ${retryCount + 1}):`, error.message);
+        circuitBreaker.recordFailure();
+
+        // Retry logic con exponential backoff
+        if (retryCount < CONFIG.MAX_RETRIES) {
+            const delay = CONFIG.RETRY_DELAY * Math.pow(2, retryCount);
+            Logger.info(`Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchWithRetry(keyword, isHot, retryCount + 1);
+        }
+
+        return null;
+    }
+}
+
+// ============================================================================
+// 🎯 PRODUCT PROCESSING & RANKING
+// ============================================================================
+
+function processBestProducts(products) {
+    if (!products || products.length === 0) return [];
+
+    try {
+        const sortedByQuality = [...products].sort((a, b) => {
+            const scoreA = (parseFloat(a.rating) || 0) * 10 + (parseInt(a.sales) || 0) / 100;
+            const scoreB = (parseFloat(b.rating) || 0) * 10 + (parseInt(b.sales) || 0) / 100;
+            return scoreB - scoreA;
+        });
+
+        const cheapest = [...products]
+            .filter(p => (parseFloat(p.rating) || 0) >= 4.2)
+            .sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
+
+        const bestValue = [...products]
+            .filter(p => (parseInt(p.sales) || 0) > 50)
+            .sort((a, b) => {
+                const ratioA = (parseFloat(a.rating) || 0) / (parseFloat(a.price) || 1);
+                const ratioB = (parseFloat(b.rating) || 0) / (parseFloat(b.price) || 1);
+                return ratioB - ratioA;
+            })[0];
+
+        const topSales = [...products].sort((a, b) => (parseInt(b.sales) || 0) - (parseInt(a.sales) || 0))[0];
+
+        return sortedByQuality.map(p => {
+            if (cheapest && p.id === cheapest.id) p.tag = "MEJOR PRECIO";
+            else if (bestValue && p.id === bestValue.id) p.tag = "CALIDAD-PRECIO";
+            else if (topSales && p.id === topSales.id) p.tag = "MÁS VENDIDO";
+            else if ((parseFloat(p.rating) || 0) >= 4.8) p.tag = "RECOMENDADO";
+            return p;
+        });
+    } catch (error) {
+        Logger.error('Error processing products:', error);
+        return products || [];
+    }
+}
+
+// ============================================================================
+// 🎨 UI RENDERING FUNCTIONS
+// ============================================================================
+
+function renderProductCard(product) {
+    const tagClass = product.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
+    const hasOldPrice = product.original_price && parseFloat(product.original_price) > parseFloat(product.price);
+    const oldPriceHtml = hasOldPrice ? `<span class="old-price">${product.original_price}€</span>` : '';
+    const image = product.image || CONFIG.FALLBACK_PLACEHOLDER;
+    const link = product.url || product.link || '#';
+
+    return `
+        <article class="card product-card" style="position: relative;">
+            ${product.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${product.tag}</div>` : ''}
+            <div class="product-image-container">
+                <img src="${image}" alt="${product.title}" loading="lazy" onerror="this.src='${CONFIG.FALLBACK_PLACEHOLDER}'">
+            </div>
+            <h3>${product.title || 'Producto'}</h3>
+            <div class="price-container">
+                ${oldPriceHtml}
+                <span class="current-price">${product.price || '0'}€</span>
+            </div>
+            ${product.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${product.rating} | ${product.sales || 0}+ vendidos</div>` : ''}
+            <a href="${link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${product.id || 'unknown'}', 'product')">Comprar Ahora →</a>
+        </article>
+    `;
+}
+
+function renderLoadingSkeleton(count = 4) {
+    return Array(count).fill(0).map(() => `
+        <article class="card product-card skeleton-card">
+            <div style="height: 180px; background: #2a3441; border-radius: 12px; margin-bottom: 15px; animation: pulse 1.5s infinite;"></div>
+            <div style="height: 20px; background: #2a3441; border-radius: 4px; width: 80%; animation: pulse 1.5s infinite 0.2s;"></div>
+            <div style="height: 40px; background: #2a3441; border-radius: 8px; margin-top: 20px; animation: pulse 1.5s infinite 0.4s;"></div>
+        </article>
+    `).join('');
+}
+
+function renderEmptyState() {
+    return '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5; padding: 40px;">No hay ofertas disponibles en este momento. Por favor, intenta más tarde.</p>';
+}
+
+function renderErrorState() {
+    return '<p style="grid-column: 1/-1; text-align: center; color: #ff4747; padding: 40px;">⚠️ Error al conectar con AliExpress. Mostrando resultados en caché.</p>';
+}
+
+// ============================================================================
+// 🔍 PRODUCT SEARCH & DISPLAY
+// ============================================================================
+
+async function mostrarProductos(keyword, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    // Show loading state
+    container.innerHTML = renderLoadingSkeleton(4);
+
+    try {
+        // Use request manager to queue the request
+        const products = await requestManager.execute(async () => {
+            return await fetchWithRetry(keyword, true);
+        }, 1); // Priority 1
+
+        if (products && products.length > 0) {
+            const processed = processBestProducts(products);
+            const filtered = processed.slice(0, CONFIG.FALLBACK_PRODUCTS_COUNT);
+            container.innerHTML = filtered.map(renderProductCard).join('');
+            Logger.info(`Displayed ${filtered.length} products for: ${keyword}`);
+        } else {
+            container.innerHTML = renderEmptyState();
+        }
+    } catch (error) {
+        Logger.error('Error displaying products:', error);
+        container.innerHTML = renderEmptyState();
+    }
+}
+
+// ============================================================================
+// 🏠 PAGE INITIALIZATION
+// ============================================================================
+
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Detectar si estamos en una subcarpeta para ajustar las rutas relativas
-    // Cloudflare Pages puede tener rutas limpias (/comparativas/algo) o con .html
-    const isSubfolder = window.location.pathname.includes('/categorias/') || window.location.pathname.includes('/comparativas/');
+    Logger.info('🚀 DomoTechStore v3.0 Initializing');
+
+    const rootPath = '/';
+    const isSubfolder = window.location.pathname.includes('/categorias/') || 
+                        window.location.pathname.includes('/comparativas/');
     const basePath = isSubfolder ? '../' : '';
 
-    // Usamos rutas absolutas desde la raíz para los componentes principales
-    const rootPath = '/';
-
-    // 2. Cargar Header y Footer (Componentes reutilizables)
+    // Load components
     loadComponent('header-placeholder', `${rootPath}includes/header.html`, () => {
-        // Cargar el menú dentro del header una vez que este existe
         loadComponent('menu-placeholder', `${rootPath}includes/menu.html`, () => {
             setupMobileMenu();
-            fixLinks(rootPath); // Aseguramos que los links del header y menú sean absolutos
+            fixLinks(rootPath);
         });
     });
+
     loadComponent('footer-placeholder', `${rootPath}includes/footer.html`, () => {
         fixLinks(rootPath);
     });
 
-    // 3. SEO dinámico
+    // Generate SEO
     generateSEO(rootPath);
 
-    // 4. Cargar datos dinámicos según la página
+    // Load dynamic content
     loadFeatured(rootPath);
     loadTopSales(rootPath);
-
-    // 5. Automatizar enlaces vacíos en guías estáticas
     automateProductLinks();
 
-    // 6. Diagnóstico de API para el usuario
-    console.log("%c[DomoTech] Sistema Inicializado v2.1", "color: #3b82f6; font-weight: bold; font-size: 1.2rem;");
+    // Check API health
     checkApiStatus();
+
+    Logger.info('✅ DomoTechStore Initialized');
 });
 
-/**
- * Verifica el estado de la conexión con la API de AliExpress
- */
-async function checkApiStatus() {
-    try {
-        const res = await fetch("/aliexpress?keyword=test");
-        if (res.ok) {
-            console.log("%c[API] Conexión establecida con éxito. AliExpress está operativo.", "color: #4ade80; font-weight: bold;");
-        } else if (res.status === 401) {
-            console.warn("%c[API] Error 401: No autorizado. Verifica las claves ALI_APP_KEY y ALI_APP_SECRET en los Secretos de Cloudflare Pages.", "background: #fef08a; color: #854d0e; padding: 4px;");
-        } else {
-            console.error(`%c[API] Error de conexión: Código ${res.status}`, "color: #f87171;");
-        }
-    } catch (e) {
-        console.error("[API] No se pudo conectar con el backend de Cloudflare Functions.", e);
+// ============================================================================
+// 🔧 UTILITY FUNCTIONS
+// ============================================================================
+
+function loadComponent(id, url, callback) {
+    const container = document.getElementById(id);
+    if (!container) return;
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error(`Error loading ${url}`);
+            return response.text();
+        })
+        .then(data => {
+            container.innerHTML = data;
+            if (callback) callback();
+        })
+        .catch(err => Logger.error(`Component load error: ${id}`, err));
+}
+
+function setupMobileMenu() {
+    const toggle = document.querySelector('.menu-toggle');
+    const nav = document.querySelector('.nav-list');
+
+    if (toggle && nav) {
+        toggle.addEventListener('click', () => {
+            nav.classList.toggle('active');
+            toggle.textContent = nav.classList.contains('active') ? '✕' : '☰';
+        });
     }
 }
 
-/**
- * Automatiza los enlaces que están vacíos (#) convirtiéndolos en enlaces DIRECTOS al mejor producto
- */
-async function automateProductLinks() {
-    const emptyLinks = document.querySelectorAll('a[href="#"]');
-    const trackingId = "Domotech_2026";
-
-    for (const link of emptyLinks) {
-        // 1. Obtener el nombre del producto o categoría del contexto
-        const card = link.closest('.card') || link.parentElement;
-        
-        // Si es una "clickable-info-card", usamos el texto descriptivo para una búsqueda más precisa
-        const isInfoCard = link.classList.contains('clickable-info-card');
-        const productName = isInfoCard 
-            ? card.querySelector('p')?.textContent 
-            : card.querySelector('h2, h3')?.textContent;
-            
-        const cleanName = (productName || "smart home").replace(/^\d+\.\s*/, '').trim();
-
-        // 2. Fallback inmediato (Búsqueda)
-        link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
-        link.target = "_blank";
-        link.rel = "nofollow sponsored";
-
-        // 3. Si no es una info-card (que busca listados), intentamos match directo de producto
-        if (!isInfoCard) {
-            try {
-                const products = await buscarProductos(cleanName, true); 
-                if (products && products.length > 0) {
-                    const bestMatch = products[0];
-                    link.href = bestMatch.link;
-                    link.title = `Mejor oferta encontrada: ${bestMatch.price}€`;
-                    
-                    const priceEl = card.querySelector('.current-price');
-                    if (priceEl && !priceEl.textContent.includes('€')) {
-                        priceEl.textContent = `${bestMatch.price}€`;
-                    }
-                }
-            } catch (err) {
-                console.warn(`No se pudo encontrar match directo para "${cleanName}"`);
+function fixLinks(basePath) {
+    const links = document.querySelectorAll('a');
+    (links || []).forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            if (!href.startsWith(basePath)) {
+                link.href = basePath + href;
             }
         }
-    }
+    });
+
+    const images = document.querySelectorAll('img');
+    (images || []).forEach(img => {
+        const src = img.getAttribute('src');
+        if (src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith(basePath)) {
+            img.src = basePath + src;
+        }
+    });
 }
 
-/**
- * Genera elementos SEO dinámicos como Breadcrumbs y JSON-LD
- */
 function generateSEO(basePath) {
-    // Generar Breadcrumbs si hay un contenedor
     const breadcrumbContainer = document.getElementById('breadcrumbs');
     if (breadcrumbContainer) {
         const path = window.location.pathname;
         let breadcrumbs = `<a href="${basePath}index.html">Inicio</a>`;
-        
+
         if (path.includes('/categorias/')) {
             const catName = document.querySelector('h1')?.textContent || 'Categoría';
             breadcrumbs += ` <span>›</span> ${catName}`;
@@ -121,487 +579,139 @@ function generateSEO(basePath) {
         }
         breadcrumbContainer.innerHTML = breadcrumbs;
     }
-
-    // Generar JSON-LD de Organización (solo en index si no existe)
-    if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
-        // El index ya suele tenerlo en el HTML, pero podemos añadir Search Action dinámico
-    }
 }
 
-/**
- * Carga un componente HTML en un contenedor específico
- */
-function loadComponent(id, url, callback) {
-    const container = document.getElementById(id);
-    if (!container) return;
-
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error(`Error cargando ${url}`);
-            return response.text();
-        })
-        .then(data => {
-            container.innerHTML = data;
-            if (callback) callback();
-        })
-        .catch(err => console.error(err));
-}
-
-/**
- * Configura el menú móvil
- */
-function setupMobileMenu() {
-    const toggle = document.querySelector('.menu-toggle');
-    const nav = document.querySelector('.nav-list');
-    
-    if (toggle && nav) {
-        toggle.addEventListener('click', () => {
-            nav.classList.toggle('active');
-            toggle.textContent = nav.classList.contains('active') ? '✕' : '☰';
-        });
-    }
-}
-
-/**
- * Corrige los enlaces e imágenes cuando estamos en una subcarpeta
- */
-function fixLinks(basePath) {
-    // Corregir enlaces
-    const links = document.querySelectorAll('a');
-    links.forEach(link => {
-        const href = link.getAttribute('href');
-        if (href && !href.startsWith('http') && !href.startsWith('#')) {
-            if (!href.startsWith(basePath)) {
-                link.href = basePath + href;
-            }
-        }
-    });
-
-    // Corregir imágenes (como el logo)
-    const images = document.querySelectorAll('img');
-    images.forEach(img => {
-        const src = img.getAttribute('src');
-        if (src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith(basePath)) {
-            img.src = basePath + src;
-        }
-    });
-}
-
-/**
- * Función principal para mostrar productos dinámicos en cualquier contenedor
- * Conecta el frontend con la API de AliExpress
- */
-async function mostrarProductos(keyword, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    // 1. Mostrar esqueletos de carga (UX mejorada)
-    container.innerHTML = Array(4).fill(0).map(() => `
-        <article class="card product-card skeleton-card">
-            <div style="height: 180px; background: #2a3441; border-radius: 12px; margin-bottom: 15px; animation: pulse 1.5s infinite;"></div>
-            <div style="height: 20px; background: #2a3441; border-radius: 4px; width: 80%; animation: pulse 1.5s infinite 0.2s;"></div>
-            <div style="height: 40px; background: #2a3441; border-radius: 8px; margin-top: 20px; animation: pulse 1.5s infinite 0.4s;"></div>
-        </article>
-    `).join('');
-
-    try {
-        console.log(`%c[DomoTech] Buscando "${keyword}" para el contenedor #${containerId}...`, "color: #facc15");
-        
-        // 2. Llamada a la API (buscarProductos ya maneja caché y proceso de tags)
-        const products = await buscarProductos(keyword, true); 
-        
-        if (products && products.length > 0) {
-            // 3. Renderizar productos reales de AliExpress
-            container.innerHTML = products.slice(0, 4).map(p => {
-                const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
-                const hasOldPrice = p.original_price && parseFloat(p.original_price) > parseFloat(p.price);
-                const oldPriceHtml = hasOldPrice ? `<span class="old-price">${p.original_price}€</span>` : '';
-
-                return `
-                <article class="card product-card" style="position: relative;">
-                    ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
-                    <div class="urgency-badge">⚡ ¡OFERTA REAL!</div>
-                    <div class="product-image-container">
-                        <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
-                    </div>
-                    <h3>${p.title}</h3>
-                    <div class="price-container">
-                        ${oldPriceHtml}
-                        <span class="current-price">${p.price}€</span>
-                    </div>
-                    ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales || 0}+ vendidos</div>` : ''}
-                    <a href="${p.url || p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Comprar Ahora →</a>
-                </article>
-                `;
-            }).join('');
-        } else {
-            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5; padding: 40px;">No hay ofertas disponibles para esta búsqueda en este momento.</p>';
-        }
-    } catch (error) {
-        console.error("Error en mostrarProductos:", error);
-        container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ff4747; padding: 40px;">Error al conectar con AliExpress. Inténtalo de nuevo más tarde.</p>';
-    }
-}
-
-/**
- * Carga productos destacados (Automatizado)
- */
 async function loadFeatured(basePath) {
     const container = document.getElementById('productos-destacados');
     if (!container) return;
 
-    try {
-        // Traemos lo mejor de lo mejor (best sellers reales)
-        const keyword = "top rated smart home gadgets";
+    container.innerHTML = renderLoadingSkeleton(4);
 
-        const products = await buscarProductos(keyword, true); 
+    try {
+        const products = await requestManager.execute(async () => {
+            return await fetchWithRetry('top rated smart home gadgets', true);
+        }, 0);
+
         if (products && products.length > 0) {
-            // Mostramos los productos reales por ranking de la API
-            container.innerHTML = products.slice(0, 4).map(p => {
-                const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
-                return `
-                <article class="card product-card" style="position: relative;">
-                    ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
-                    <div class="product-image-container">
-                        <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
-                    </div>
-                    <h3>${p.title}</h3>
-                    <div class="price-container">
-                        <span class="current-price">${p.price}€</span>
-                    </div>
-                    ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales}+ vendidos</div>` : ''}
-                    <a href="${p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress')">Ver Detalles →</a>
-                </article>
-                `;
-            }).join('');
+            const processed = processBestProducts(products);
+            const filtered = processed.slice(0, 4);
+            container.innerHTML = filtered.map(renderProductCard).join('');
         } else {
-            renderProductGrid('productos-destacados', `${basePath}data/productos.json`, p => p.destacado, 4);
+            container.innerHTML = renderEmptyState();
         }
     } catch (error) {
-        renderProductGrid('productos-destacados', `${basePath}data/productos.json`, p => p.destacado, 4);
+        Logger.error('Load featured error:', error);
+        container.innerHTML = renderEmptyState();
     }
 }
 
-/**
- * Carga Top Ventas (Categorías Automáticas)
- */
 async function loadTopSales(basePath) {
     const container = document.getElementById('top-ventas-categorias');
     if (!container) return;
 
     try {
-        const categoriesRes = await fetch(`${basePath}data/categorias.json`);
-        const allCategories = await categoriesRes.json();
-        
-        // Usamos las primeras 3 categorías principales para mostrar sus top ventas REALES
-        const selectedCategories = (allCategories || []).slice(0, 3);
-        if (!selectedCategories || selectedCategories.length === 0) {
-            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">No hay categorías disponibles.</p>';
+        const res = await fetch(`${basePath}data/categorias.json`);
+        const allCategories = await res.json();
+
+        if (!allCategories || allCategories.length === 0) {
+            container.innerHTML = renderEmptyState();
             return;
         }
 
-        const results = await Promise.all(selectedCategories.map(cat => buscarProductos(cat.keyword, true))); 
-        
+        const selectedCategories = (allCategories || []).slice(0, 3);
+        const results = await Promise.all(
+            selectedCategories.map(cat => 
+                requestManager.execute(() => fetchWithRetry(cat.keyword, true), 0)
+            )
+        );
+
         let hasContent = false;
         const html = selectedCategories.map((cat, idx) => {
-            // El primer resultado de buscarProductos para cada categoría es el Top Venta real
-            let product = results[idx]?.[0];
-            
+            const product = results[idx]?.[0];
             if (!product) return '';
+
             hasContent = true;
-            
             return `
                 <div class="top-sales-item card">
                     <div style="width: 70px; height: 70px; flex-shrink: 0; background: #fff; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                        <img src="${product.image}" style="width: 90%; height: 90%; object-fit: contain;" loading="lazy" onerror="this.src='https://placehold.co/100x100/1e293b/white?text=Tech'">
+                        <img src="${product.image || CONFIG.FALLBACK_PLACEHOLDER}" style="width: 90%; height: 90%; object-fit: contain;" loading="lazy" onerror="this.src='${CONFIG.FALLBACK_PLACEHOLDER}'">
                     </div>
                     <div style="flex-grow: 1; min-width: 0;">
                         <div class="cat-tag">${cat.nombre}</div>
                         <h4 style="font-size: 0.85rem; margin-bottom: 5px; height: 2.4em; overflow: hidden; line-height: 1.2;">${product.title}</h4>
-                        <a href="${product.link}" class="btn-link" style="font-size: 0.75rem; margin: 0;" target="_blank" onclick="trackClick('${product.id}', 'top_sales')">Ver Top Venta →</a>
+                        <a href="${product.link || '#'}" class="btn-link" style="font-size: 0.75rem; margin: 0;" target="_blank" onclick="trackClick('${product.id}', 'top_sales')">Ver Top Venta →</a>
                     </div>
                 </div>
             `;
         }).join('');
 
-        if (hasContent) {
-            container.innerHTML = html;
+        container.innerHTML = hasContent ? html : renderEmptyState();
+    } catch (error) {
+        Logger.error('Load top sales error:', error);
+        container.innerHTML = renderEmptyState();
+    }
+}
+
+async function automateProductLinks() {
+    const emptyLinks = document.querySelectorAll('a[href="#"]');
+    const trackingId = "Domotech_2026";
+
+    for (const link of emptyLinks) {
+        const card = link.closest('.card') || link.parentElement;
+        const isInfoCard = link.classList.contains('clickable-info-card');
+        const productName = isInfoCard
+            ? card.querySelector('p')?.textContent
+            : card.querySelector('h2, h3')?.textContent;
+
+        const cleanName = (productName || "smart home").replace(/^\d+\.\s*/, '').trim();
+        link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
+        link.target = "_blank";
+        link.rel = "nofollow sponsored";
+
+        if (!isInfoCard) {
+            try {
+                const products = await requestManager.execute(() => fetchWithRetry(cleanName, true), 0);
+                if (products && products.length > 0) {
+                    const bestMatch = products[0];
+                    link.href = bestMatch.link || bestMatch.url || link.href;
+                    link.title = `Mejor oferta: ${bestMatch.price}€`;
+                }
+            } catch (err) {
+                Logger.warn(`No direct match for "${cleanName}"`, err);
+            }
+        }
+    }
+}
+
+async function checkApiStatus() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), CONFIG.API_TIMEOUT);
+
+        const res = await fetch(`${CONFIG.API_ENDPOINT}?keyword=test`, {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+            STATE.apiHealth.status = 'operational';
+            STATE.apiHealth.lastCheck = Date.now();
+            Logger.info('✅ API Status: Operational');
+        } else if (res.status === 401) {
+            Logger.error('⚠️ API 401: Check credentials');
+            STATE.apiHealth.status = 'auth_failed';
         } else {
-            container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">No hay ofertas disponibles en AliExpress en este momento.</p>';
+            Logger.warn(`⚠️ API Status: ${res.status}`);
+            STATE.apiHealth.status = 'degraded';
         }
     } catch (error) {
-        console.error("Error cargando top ventas reales:", error);
+        Logger.error('API health check failed:', error.message);
+        STATE.apiHealth.status = 'offline';
+        STATE.apiHealth.failureCount++;
     }
 }
 
-/**
- * Carga una comparativa dinámica basada en datos
- */
-function loadDynamicComparison(basePath) {
-    const container = document.getElementById('comparativa-dinamica');
-    if (!container) return;
-
-    const category = container.dataset.category || 'enchufes-energia-smart';
-
-    fetch(`${basePath}data/productos.json`)
-        .then(r => r.json())
-        .then(productos => {
-            if (!productos || productos.length === 0) {
-                container.innerHTML = '<p style="text-align: center; opacity: 0.5;">No hay productos disponibles para comparar.</p>';
-                return;
-            }
-
-            const filtered = (productos || [])
-                .filter(p => p.categoria === category)
-                .sort((a, b) => b.valoracion - a.valoracion)
-                .slice(0, 3);
-
-            let tableHtml = `
-                <div class="table-responsive">
-                    <table class="comparison-table">
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th>Precio</th>
-                                <th>Valoración</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filtered.map(p => `
-                                <tr>
-                                    <td><strong>${p.nombre}</strong></td>
-                                    <td>~${p.precio_aproximado}€</td>
-                                    <td>⭐ ${p.valoracion}/5</td>
-                                    <td><a href="${formatAffiliateLink(p.enlace, 'Domotech_2026')}" class="btn-aliexpress" style="padding: 8px 15px; font-size: 0.8rem; margin: 0;" target="_blank" onclick="trackClick('${p.id}', 'comparison')">Ver Oferta →</a></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            container.innerHTML = tableHtml;
-        });
-}
-
-/**
- * Asegura que el enlace de afiliado esté bien formateado con los parámetros de Portals
- */
-function formatAffiliateLink(url, trackingId) {
-    if (!url) return "#";
-    const cleanUrl = url.split('?')[0];
-    return `${cleanUrl}?aff_id=${trackingId}&aff_fcid=default&aff_platform=portals-tool&sk=${trackingId}`;
-}
-
-/**
- * Función genérica para renderizar grids de productos
- */
-function renderProductGrid(containerId, url, filterFn, limit, showDiscount = false) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    fetch(url)
-        .then(r => r.json())
-        .then(data => {
-            if (!data || data.length === 0) {
-                container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">No hay productos disponibles en este momento.</p>';
-                return;
-            }
-
-            let rawProducts = (data || []).filter(filterFn);
-            if (limit) rawProducts = rawProducts.slice(0, limit);
-
-            if (rawProducts.length === 0) {
-                container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; opacity: 0.5;">No hay productos disponibles en este momento.</p>';
-                return;
-            }
-
-            // Normalizar productos locales al formato unificado
-            const products = rawProducts.map(p => ({
-                id: p.id,
-                title: p.nombre,
-                price: p.precio_aproximado,
-                old_price: p.precio_original,
-                image: p.imagen || 'assets/img/placeholder-tech.jpg',
-                link: formatAffiliateLink(p.enlace, 'Domotech_2026'),
-                descripcion: p.descripcion
-            }));
-
-            // Generar Structured Data
-            injectProductSchema(rawProducts);
-
-            container.innerHTML = products.map(p => {
-                const discount = p.old_price ? Math.round(((p.old_price - p.price) / p.old_price) * 100) : 0;
-                const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
-                return `
-                    <article class="card product-card" itemscope itemtype="https://schema.org/Product" style="position: relative;">
-                        ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
-                        ${showDiscount && discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
-                        <div class="product-image-container">
-                            <img src="${p.image}" alt="${p.title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Tech+Gadget'">
-                        </div>
-                        <h3 itemprop="name">${p.title}</h3>
-                        <p class="product-desc" itemprop="description">${p.descripcion}</p>
-                        <div class="price-container" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-                            <meta itemprop="priceCurrency" content="EUR">
-                            <meta itemprop="price" content="${p.price}">
-                            ${p.old_price > p.price ? `<span class="old-price">${p.old_price}€</span>` : ''}
-                            <span class="current-price">~${p.price}€</span>
-                        </div>
-                        <a href="${p.link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${p.id}', 'local')">Ver en AliExpress →</a>
-                    </article>
-                `;
-            }).join('');
-        })
-        .catch(err => console.error(`Error cargando productos para ${containerId}:`, err));
-}
-
-/**
- * Inyecta Schema.org JSON-LD para los productos cargados
- */
-function injectProductSchema(products) {
-    if (!products || products.length === 0) return;
-
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    
-    const schema = {
-        "@context": "https://schema.org",
-        "@graph": (products || []).map(p => ({
-            "@type": "Product",
-            "name": p.nombre,
-            "description": p.descripcion,
-            "offers": {
-                "@type": "Offer",
-                "price": p.precio_aproximado,
-                "priceCurrency": "EUR",
-                "availability": "https://schema.org/InStock",
-                "url": p.enlace
-            },
-            "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": p.valoracion || 4.5,
-                "reviewCount": p.ventas || 100
-            }
-        }))
-    };
-
-    script.text = JSON.stringify(schema);
-    document.head.appendChild(script);
-}
-
-/**
- * Función global para buscar en AliExpress vía API (Con Caché y Optimización)
- */
-async function buscarProductos(keyword, isHot = false) {
-    if (!keyword) return [];
-    const cacheKey = `search_${keyword.toLowerCase().trim().replace(/\s+/g, '_')}${isHot ? '_hot' : ''}`;
-    const CACHE_TIME = 1000 * 60 * 15; // Reducido a 15 minutos para mayor frescura (antes 1 hora)
-
-    // 1. Intentar obtener de la caché (localStorage)
-    try {
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-            const { data, timestamp } = JSON.parse(cached);
-            if (Date.now() - timestamp < CACHE_TIME) {
-                console.log(`%c[API] Cargando "${keyword}" desde caché...`, "color: #4ade80");
-                return data;
-            }
-        }
-    } catch (e) {}
-
-    console.log(`%c[API] Conectando con AliExpress para: "${keyword}"...`, "color: #3b82f6");
-
-    // 2. Llamada a la API
-    const endpoint = "/aliexpress";
-    let items = [];
-    try {
-        const url = `${endpoint}?keyword=${encodeURIComponent(keyword)}${isHot ? '&hot=true' : ''}`;
-        const res = await fetch(url);
-        
-        if (res.status === 401) {
-            console.error("%c[API] Error 401: Unauthorized. Revisa tu APP_KEY y SECRET en Cloudflare.", "background: #ff4747; color: white; padding: 2px 5px; border-radius: 3px;");
-            return [];
-        }
-        
-        if (!res.ok) throw new Error(`Error API: ${res.status}`);
-        
-        const data = await res.json();
-        
-        if (data.error) {
-            console.error(`%c[API] AliExpress Error: ${data.error}`, "background: #450a0a; color: #f87171; padding: 2px 5px; border-radius: 3px;");
-            if (data.details) console.dir(data.details);
-            return [];
-        }
-
-        const result = data.result || data;
-        items = result.items || [];
-        
-        console.log(`%c[API] Éxito: ${items.length} productos recibidos.`, "color: #4ade80");
-    } catch (apiErr) {
-        console.warn("%c[API] Error en llamada API AliExpress:", "color: #facc15", apiErr);
-    }
-
-    // 3. Fallback: Si pedimos 'hot' y no vino nada, intentar búsqueda normal una vez
-    if (isHot && items.length === 0) {
-        console.log(`No se encontraron Hot Products para "${keyword}", intentando búsqueda normal...`);
-        return await buscarProductos(keyword, false);
-    }
-
-    // 4. Guardar en caché si hay resultados
-    if (items.length > 0) {
-        localStorage.setItem(cacheKey, JSON.stringify({
-            data: items,
-            timestamp: Date.now()
-        }));
-    }
-
-    return processBestProducts(items);
-}
-
-/**
- * Procesa una lista de productos para marcar los "Mejores" según criterios reales de AliExpress
- */
-function processBestProducts(products) {
-    if (!products || products.length === 0) return [];
-
-    // 1. Ordenar por "Calidad" (Rating + Ventas) para tener una base de confianza
-    const sortedByQuality = [...products].sort((a, b) => {
-        const scoreA = (parseFloat(a.rating) || 0) * 10 + (parseInt(a.sales) || 0) / 100;
-        const scoreB = (parseFloat(b.rating) || 0) * 10 + (parseInt(b.sales) || 0) / 100;
-        return scoreB - scoreA;
-    });
-
-    // 2. Identificar el de Mejor Precio (el más barato de entre los que tienen buen rating)
-    const cheapest = [...products]
-        .filter(p => (parseFloat(p.rating) || 0) >= 4.2) // Filtro mínimo de calidad para el barato
-        .sort((a, b) => parseFloat(a.price) - parseFloat(b.price))[0];
-    
-    // 3. Identificar Calidad-Precio (el que tiene mejor relación Rating/Precio)
-    const bestValue = [...products]
-        .filter(p => (parseInt(p.sales) || 0) > 50) // Que tenga algunas ventas
-        .sort((a, b) => {
-            const ratioA = (parseFloat(a.rating) || 0) / parseFloat(a.price);
-            const ratioB = (parseFloat(b.rating) || 0) / parseFloat(b.price);
-            return ratioB - ratioA;
-        })[0];
-    
-    // 4. Identificar el Top Ventas (Popularidad pura)
-    const topSales = [...products].sort((a, b) => (parseInt(b.sales) || 0) - (parseInt(a.sales) || 0))[0];
-
-    return sortedByQuality.map(p => {
-        if (cheapest && p.id === cheapest.id) p.tag = "MEJOR PRECIO";
-        else if (bestValue && p.id === bestValue.id) p.tag = "CALIDAD-PRECIO";
-        else if (topSales && p.id === topSales.id) p.tag = "MÁS VENDIDO";
-        else if ((parseFloat(p.rating) || 0) >= 4.8) p.tag = "RECOMENDADO";
-        return p;
-    });
-}
-
-/**
- * Sistema de estadísticas de clics y conversiones (100% Autónomo)
- * Guarda los clics en localStorage para análisis posterior
- */
 function trackClick(productId, provider) {
     try {
         const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": [], "total": 0}');
@@ -612,20 +722,53 @@ function trackClick(productId, provider) {
             timestamp: new Date().toISOString()
         });
         stats.total++;
-        
-        // Mantener solo los últimos 100 clics para no saturar el storage
+
         if (stats.clicks.length > 100) stats.clicks.shift();
-        
         localStorage.setItem('domotech_stats', JSON.stringify(stats));
-        console.log(`Click registrado: ${productId} (${provider})`);
+        Logger.debug(`Click tracked: ${productId} (${provider})`);
     } catch (e) {
-        console.error("Error registrando click:", e);
+        Logger.error('Error tracking click:', e);
     }
 }
 
-// Conexión automática con AliExpress (Ofertas del día)
-document.addEventListener("DOMContentLoaded", () => {
-    if (typeof mostrarProductos === 'function') {
-        mostrarProductos("smart home", "ofertas-dia");
-    }
-});
+// ============================================================================
+// 📊 MONITORING & DEBUG CONSOLE
+// ============================================================================
+
+function getDiagnostics() {
+    return {
+        uptime: Math.round((Date.now() - performance.timing.navigationStart) / 1000) + 's',
+        cache: cacheManager.getStats(),
+        requestManager: requestManager.getStats(),
+        circuitBreaker: {
+            state: circuitBreaker.state,
+            failureCount: circuitBreaker.failureCount
+        },
+        apiHealth: STATE.apiHealth,
+        timestamp: new Date().toISOString()
+    };
+}
+
+// Expose diagnostics to window for debugging
+window.DOMOTECH = {
+    diagnostics: getDiagnostics,
+    logger: Logger,
+    config: CONFIG,
+    clearCache: () => {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key.startsWith('domotech_cache_')) localStorage.removeItem(key);
+        }
+        Logger.info('Cache cleared');
+    },
+    forceApiCheck: () => checkApiStatus(),
+    showStats: () => console.table(getDiagnostics())
+};
+
+Logger.info('🔧 Debug mode enabled. Type: DOMOTECH.showStats() to see diagnostics');
+
+// Auto-check API health every 5 minutes
+setInterval(checkApiStatus, 5 * 60 * 1000);
+
+// Auto-cleanup cache every 30 minutes
+setInterval(() => cacheManager.cleanupOldEntries(), 30 * 60 * 1000);
