@@ -21,8 +21,7 @@ export async function onRequest(context) {
  * Llama a la API de AliExpress con firma SHA256
  */
 async function callAliExpressApi(keyword, env) {
-    const endpoint = "https://api.aliexpress.com/sync";
-
+    const endpoint = "https://api-sg.aliexpress.com/sync/portal/affiliate";
     // 🔥 tracking_id añadido correctamente
     const baseParams = {
         page_size: "20",
