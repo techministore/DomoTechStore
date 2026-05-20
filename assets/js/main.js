@@ -745,9 +745,9 @@ async function checkApiStatus() {
 /**
  * Sistema de estadísticas de clics y conversiones (100% Autónomo)
  */
-function trackClick(productId, provider, contextInfo = null) {
+function trackClick(productId, provider, contextInfo = null, productData = null) {
     try {
-        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": [], "total": 0, "interests": {}}');
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": [], "total": 0, "interests": {}, "recently_viewed": []}');
         
         // Registrar el click
         stats.clicks.push({
@@ -762,20 +762,68 @@ function trackClick(productId, provider, contextInfo = null) {
         if (contextInfo) {
             stats.interests[contextInfo] = (stats.interests[contextInfo] || 0) + 1;
         } else {
-            // Si no hay contexto, intentar deducirlo de la URL
             const path = window.location.pathname;
             if (path.includes('/categorias/')) {
                 const cat = path.split('/').pop().replace('.html', '');
                 stats.interests[cat] = (stats.interests[cat] || 0) + 1;
             }
         }
+
+        // NUEVO: Guardar en "Vistos recientemente"
+        if (productData) {
+            // Evitar duplicados: eliminar si ya existe y poner al principio
+            stats.recently_viewed = stats.recently_viewed.filter(p => p.id !== productId);
+            stats.recently_viewed.unshift({
+                id: productId,
+                title: productData.title,
+                image: productData.image,
+                price: productData.price,
+                url: productData.url || productData.link,
+                timestamp: Date.now()
+            });
+            // Limitar a los últimos 8 productos vistos
+            if (stats.recently_viewed.length > 8) stats.recently_viewed.pop();
+        }
         
         if (stats.clicks.length > 100) stats.clicks.shift();
         
         localStorage.setItem('domotech_stats', JSON.stringify(stats));
-        Logger.debug(`Click registrado: ${productId} | Interés: ${contextInfo || 'Deducido'}`);
+        Logger.debug(`Click registrado: ${productId} | Recientemente visto actualizado`);
     } catch (e) {
         Logger.error("Error registrando click:", e);
+    }
+}
+
+/**
+ * Carga los productos vistos recientemente por el usuario
+ */
+function loadRecentlyViewed() {
+    const container = document.getElementById('vistos-recientemente');
+    if (!container) return;
+
+    try {
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{}');
+        const recently = stats.recently_viewed || [];
+
+        if (recently.length > 0) {
+            container.innerHTML = recently.slice(0, 4).map(p => `
+                <article class="card product-card small-card">
+                    <div class="product-image-container" style="height: 120px;">
+                        <img src="${p.image}" alt="${p.title}" style="max-height: 100px;">
+                    </div>
+                    <h4 style="font-size: 0.8rem; height: 2.6em; overflow: hidden; margin-bottom: 8px;">${p.title}</h4>
+                    <div class="price-container">
+                        <span class="current-price" style="font-size: 1rem;">${p.price}€</span>
+                    </div>
+                    <a href="${p.url}" class="btn-aliexpress" style="padding: 6px; font-size: 0.7rem; margin-top: 10px;" target="_blank">Volver a ver →</a>
+                </article>
+            `).join('');
+            container.parentElement.style.display = 'block';
+        } else {
+            container.parentElement.style.display = 'none';
+        }
+    } catch (e) {
+        Logger.error("Error cargando vistos recientemente:", e);
     }
 }
 
@@ -810,17 +858,22 @@ async function loadPersonalizedRecommendations(basePath) {
         if (products && products.length > 0) {
             container.innerHTML = products.slice(0, 4).map(p => {
                 const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
+                const hasOldPrice = p.original_price && parseFloat(p.original_price) > parseFloat(p.price);
+                const oldPriceHtml = hasOldPrice ? `<span class="old-price">${p.original_price}€</span>` : '';
                 return `
                 <article class="card product-card" style="position: relative;">
                     ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
+                    <div class="urgency-badge">⚡ ¡OFERTA REAL!</div>
                     <div class="product-image-container">
                         <img src="${p.image || CONFIG.FALLBACK_PLACEHOLDER}" alt="${p.title}" loading="lazy" onerror="this.src='${CONFIG.FALLBACK_PLACEHOLDER}'">
                     </div>
                     <h3>${p.title}</h3>
                     <div class="price-container">
+                        ${oldPriceHtml}
                         <span class="current-price">${p.price}€</span>
                     </div>
-                    <a href="${p.url || p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress', '${keyword}')">Ver Oferta →</a>
+                    ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales || 0}+ vendidos</div>` : ''}
+                    <a href="${p.url || p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress', '${keyword}', ${JSON.stringify(p).replace(/"/g, '&quot;')})">Comprar Ahora →</a>
                 </article>
                 `;
             }).join('');
@@ -838,9 +891,10 @@ document.addEventListener("DOMContentLoaded", () => {
         mostrarProductos("smart home", "ofertas-dia");
     }
     
-    // Cargar recomendaciones después de un breve delay para no saturar la carga inicial
+    // Cargar recomendaciones y vistos recientemente después de un breve delay
     setTimeout(() => {
         loadPersonalizedRecommendations('/');
+        loadRecentlyViewed();
     }, 1500);
 });
 
