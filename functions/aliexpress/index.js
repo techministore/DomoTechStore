@@ -1,187 +1,98 @@
-import { callAliExpressApi } from "../utils/aliApi.js";
-import { cleanAliUrl } from "../utils/cleanUrl.js";
-
 export async function onRequest(context) {
     const { request, env } = context;
+
+    // Obtener parámetros de la URL
     const url = new URL(request.url);
-
     const keyword = url.searchParams.get("keyword") || "smart home";
-    const hot = url.searchParams.get("hot") === "true";
-    const debug = url.searchParams.get("debug") === "1";
 
-    console.log("────────────────────────────────────────────");
-    console.log("[ALIEXPRESS] Nueva petición");
-    console.log("Keyword:", keyword);
-    console.log("Hot:", hot);
-
-    // 0) Configuración de caché
-    let cache;
-    try {
-        cache = caches.default;
-    } catch (e) {
-        console.log("[CACHE] Caches.default no disponible:", e.message);
+    // Validación básica
+    if (!keyword || keyword.trim().length < 2) {
+        return new Response(JSON.stringify({ items: [], error: "Keyword too short" }), {
+            headers: { "Content-Type": "application/json" }
+        });
     }
 
-    const cacheKey = new Request(url.toString());
+    // Llamada a la API de AliExpress
+    const result = await callAliExpressApi(keyword, env);
 
-    // 1) Intentar leer desde caché
-    if (cache) {
-        try {
-            const cached = await cache.match(cacheKey);
-            if (cached) {
-                console.log("[CACHE] Respuesta servida desde caché");
-                return cached;
-            }
-        } catch (e) {
-            console.log("[CACHE] Error leyendo caché:", e.message);
-        }
-    }
+    return new Response(JSON.stringify(result), {
+        headers: { "Content-Type": "application/json" }
+    });
+}
 
-    if (!keyword || keyword.trim().length === 0) {
-        return new Response(
-            JSON.stringify({ error: "El parámetro 'keyword' es obligatorio", items: [] }, null, 2),
-            { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-    }
+/**
+ * Llama a la API de AliExpress con firma SHA256
+ */
+async function callAliExpressApi(keyword, env) {
+    const endpoint = "https://api.aliexpress.com/sync";
 
+    // 🔥 ESTA ES LA PARTE CRÍTICA: tracking_id añadido
     const baseParams = {
         page_size: "20",
         page_no: "1",
-        keyword: keyword.trim()
+        keyword: keyword.trim(),
+        tracking_id: env.ALI_TRACKING_ID   // ← AQUÍ ESTÁ LA CLAVE
     };
 
-    const METHOD_HOT = "aliexpress.affiliate.hotproduct.query";
-    const METHOD_NORMAL = "aliexpress.affiliate.product.query";
+    const signedParams = signParams(baseParams, env);
 
-    const primaryMethod = hot ? METHOD_HOT : METHOD_NORMAL;
-    console.log("[ALIEXPRESS] Método primario:", primaryMethod);
+    const formBody = new URLSearchParams(signedParams).toString();
 
-    let apiResponse;
-
-    // 2) Llamada principal protegida
-    try {
-        apiResponse = await callAliExpressApi(primaryMethod, baseParams, env);
-    } catch (e) {
-        console.log("[ALIEXPRESS] EXCEPCIÓN en llamada principal:", e.message);
-        return new Response(JSON.stringify({ items: [] }, null, 2), {
-            status: 200,
-            headers: {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*"
-            }
-        });
-    }
-
-    console.log("[ALIEXPRESS] Respuesta primario:");
-    console.log(JSON.stringify(apiResponse, null, 2));
-
-    const hasError =
-        !apiResponse ||
-        apiResponse.error_response ||
-        !(
-            apiResponse.aliexpress_affiliate_hotproduct_query_response ||
-            apiResponse.aliexpress_affiliate_product_query_response
-        );
-
-    // 3) Fallback protegido
-    if (hasError && hot) {
-        console.log("[FALLBACK] Hot falló. Probando búsqueda normal…");
-
-        try {
-            apiResponse = await callAliExpressApi(METHOD_NORMAL, baseParams, env);
-        } catch (e) {
-            console.log("[ALIEXPRESS] EXCEPCIÓN en fallback:", e.message);
-            return new Response(JSON.stringify({ items: [] }, null, 2), {
-                status: 200,
-                headers: {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*"
-                }
-            });
-        }
-
-        console.log("[ALIEXPRESS] Respuesta fallback:");
-        console.log(JSON.stringify(apiResponse, null, 2));
-    }
-
-    // 4) Si sigue fallando → devolver vacío
-    if (!apiResponse || apiResponse.error_response) {
-        console.log("[ALIEXPRESS] Error final. Devolviendo vacío.");
-        return new Response(JSON.stringify({ items: [] }, null, 2), {
-            status: 200,
-            headers: {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*"
-            }
-        });
-    }
-
-    // 5) Extraer productos de forma segura
-    const responseData =
-        apiResponse.aliexpress_affiliate_product_query_response ||
-        apiResponse.aliexpress_affiliate_hotproduct_query_response ||
-        apiResponse;
-
-    const items =
-        responseData?.resp_result?.result?.products ||
-        responseData?.result?.products ||
-        [];
-
-    console.log("[ALIEXPRESS] Productos encontrados:", items.length);
-
-    // Modo debug → devolver JSON crudo
-    if (debug) {
-        return new Response(JSON.stringify(apiResponse, null, 2), {
-            status: 200,
-            headers: {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*"
-            }
-        });
-    }
-
-    if (!Array.isArray(items) || items.length === 0) {
-        return new Response(JSON.stringify({ items: [] }, null, 2), {
-            status: 200,
-            headers: {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*"
-            }
-        });
-    }
-
-    const cleaned = items
-        .map((p) => ({
-            id: p.product_id || null,
-            title: p.product_title || "Sin título",
-            image: p.product_main_image_url || "",
-            price: p.target_sale_price || 0,
-            original_price: p.target_original_price || 0,
-            rating: p.evaluate_rate || 0,
-            url: cleanAliUrl(p.product_detail_url)
-        }))
-        .filter((item) => item.id);
-
-    console.log("[ALIEXPRESS] Productos procesados:", cleaned.length);
-
-    const response = new Response(JSON.stringify({ items: cleaned }, null, 2), {
-        status: 200,
-        headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Cache-Control": "public, max-age=600"
-        }
+    const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formBody
     });
 
-    // 6) Guardar en caché
-    if (cache) {
-        try {
-            context.waitUntil(cache.put(cacheKey, response.clone()));
-        } catch (e) {
-            console.log("[CACHE] Error guardando en caché:", e.message);
-        }
-    }
+    const data = await response.json();
 
-    return response;
+    // Normalizar respuesta
+    const items =
+        data?.resp_result?.result?.products ||
+        data?.resp_result?.result?.items ||
+        [];
+
+    return { items };
 }
 
+/**
+ * Firma los parámetros con SHA256
+ */
+function signParams(params, env) {
+    const timestamp = Date.now().toString();
+
+    const base = {
+        app_key: env.ALI_APP_KEY,
+        method: "aliexpress.affiliate.product.query",
+        sign_method: "sha256",
+        timestamp,
+        v: "2.0",
+        format: "json",
+        ...params
+    };
+
+    const sorted = Object.keys(base)
+        .sort()
+        .map((k) => `${k}${base[k]}`)
+        .join("");
+
+    const signBase = env.ALI_APP_SECRET + sorted + env.ALI_APP_SECRET;
+
+    const sign = sha256(signBase).toUpperCase();
+
+    return { ...base, sign };
+}
+
+/**
+ * SHA256 helper
+ */
+function sha256(str) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+
+    return crypto.subtle.digest("SHA-256", data).then((hash) => {
+        return Array.from(new Uint8Array(hash))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+    });
+}
