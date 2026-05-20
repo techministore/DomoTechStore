@@ -7,6 +7,7 @@ export async function onRequest(context) {
 
     const keyword = url.searchParams.get("keyword") || "smart home";
     const hot = url.searchParams.get("hot") === "true";
+    const debug = url.searchParams.get("debug") === "1";
 
     console.log("────────────────────────────────────────────");
     console.log("[ALIEXPRESS] Nueva petición");
@@ -128,6 +129,17 @@ export async function onRequest(context) {
 
     console.log("[ALIEXPRESS] Productos encontrados:", items.length);
 
+    // Modo debug → devolver JSON crudo
+    if (debug) {
+        return new Response(JSON.stringify(apiResponse, null, 2), {
+            status: 200,
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
+        });
+    }
+
     if (!Array.isArray(items) || items.length === 0) {
         return new Response(JSON.stringify({ items: [] }, null, 2), {
             status: 200,
@@ -172,3 +184,4 @@ export async function onRequest(context) {
 
     return response;
 }
+
