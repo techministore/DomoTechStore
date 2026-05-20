@@ -67,6 +67,16 @@ function filterLocalItems(searchTerm) {
     const visibleItems = Array.from(itemsToSearch).filter(item => item.style.display !== 'none');
     handleNoResults(visibleItems.length, document.getElementById('search-input'));
 }
+async function buscarProductos(keyword) {
+    try {
+        const response = await fetch(`/aliexpress?keyword=${encodeURIComponent(keyword)}`);
+        const data = await response.json();
+        return data.items || [];
+    } catch (e) {
+        console.error("Error llamando a la API:", e);
+        return [];
+    }
+}
 
 /**
  * Muestra los productos en la web (Con Loading Skeletons y Optimización)
