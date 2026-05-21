@@ -61,7 +61,7 @@ export async function callAliExpressApi(method, businessParams, env) {
     const API_URL = 'https://api-sg.aliexpress.com/sync/portal/affiliate/product/query';
     const timestamp = Date.now().toString();
 
-    // 1. Parámetros comunes obligatorios
+    // 1. Parámetros comunes obligatorios (el orden aquí es importante para la firma)
     const commonParams = {
         app_key: APP_KEY,
         format: 'json',
@@ -74,15 +74,27 @@ export async function callAliExpressApi(method, businessParams, env) {
     // 2. Firmar SOLO los parámetros comunes (NO incluir businessParams)
     const sign = await signRequest(commonParams, APP_SECRET);
 
-    // 3. Construir el body como JSON
-    const body = JSON.stringify({
-        biz_param: businessParams,
-        ...commonParams,
-        sign
-    });
+    // 3. Construir el body JSON con MISMO ORDEN que la firma:
+    //    - Parámetros comunes ordenados alfabéticamente
+    //    - biz_param
+    //    - sign
+    const sortedCommonKeys = Object.keys(commonParams).sort();
+    const bodyObj = {};
+
+    // Agregar parámetros comunes en orden alfabético
+    for (const key of sortedCommonKeys) {
+        bodyObj[key] = commonParams[key];
+    }
+
+    // Agregar business params y firma
+    bodyObj.biz_param = businessParams;
+    bodyObj.sign = sign;
+
+    const body = JSON.stringify(bodyObj);
 
     console.log('[ALIEXPRESS] URL:', API_URL);
-    console.log('[ALIEXPRESS] Parámetros firmados:', Object.keys(commonParams).sort());
+    console.log('[ALIEXPRESS] Parámetros firmados (orden alfabético):', sortedCommonKeys);
+    console.log('[ALIEXPRESS] Orden del body:', Object.keys(bodyObj));
     console.log('[ALIEXPRESS] Firma:', sign.substring(0, 16) + '...');
 
     // 4. Petición POST con timeout
