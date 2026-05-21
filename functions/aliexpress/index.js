@@ -73,8 +73,8 @@ export async function onRequest(context) {
     // 4) Parámetros de negocio (CRÍTICO: Incluir campos requeridos para la firma)
     const businessParams = {
         keyword: cleanKeyword,
-        page_size: '20',
-        page_no: '1',
+        page_size: 20,
+        page_no: 1,
         tracking_id: env.ALI_TRACKING_ID || 'Domotech_2026',
         target_currency: currency,
         target_language: language,
