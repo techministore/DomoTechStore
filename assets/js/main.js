@@ -406,7 +406,10 @@ function renderProductCard(product) {
     const hasOldPrice = product.original_price && parseFloat(product.original_price) > parseFloat(product.price);
     const oldPriceHtml = hasOldPrice ? `<span class="old-price">${product.original_price}€</span>` : '';
     const image = product.image || CONFIG.FALLBACK_PLACEHOLDER;
-    const link = product.url || product.link || '#';
+    const aliLink = product.url || product.link || '#';
+    
+    // Configuración de Miravia
+    const miraviaSearchUrl = `https://www.awin1.com/cread.php?awinmid=30521&awinaffid=1636287&ued=${encodeURIComponent('https://www.miravia.es/search?q=' + encodeURIComponent(product.title))}`;
 
     return `
         <article class="card product-card" style="position: relative;">
@@ -420,7 +423,15 @@ function renderProductCard(product) {
                 <span class="current-price">${product.price || '0'}€</span>
             </div>
             ${product.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${product.rating} | ${product.sales || 0}+ vendidos</div>` : ''}
-            <a href="${link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${product.id || 'unknown'}', 'product')">Comprar Ahora →</a>
+            
+            <div class="product-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                <a href="${aliLink}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${product.id || 'unknown'}', 'aliexpress')">
+                    Comprar en AliExpress →
+                </a>
+                <a href="${miraviaSearchUrl}" class="btn-miravia" target="_blank" rel="nofollow sponsored" onclick="trackClick('${product.id || 'unknown'}', 'miravia', null, ${JSON.stringify(product).replace(/"/g, '&quot;')})">
+                    Ver en Miravia (Awin)
+                </a>
+            </div>
         </article>
     `;
 }
