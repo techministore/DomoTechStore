@@ -17,6 +17,9 @@ export async function onRequest(context) {
 
     const keyword = url.searchParams.get('keyword') || 'smart home';
     const hot = url.searchParams.get('hot') === 'true';
+    const currency = url.searchParams.get('currency') || 'EUR';
+    const language = url.searchParams.get('language') || 'es';
+    const country = url.searchParams.get('country') || 'ES';
 
     console.log('────────────────────────────────────────────');
     console.log('[ALIEXPRESS] Nueva petición:', keyword, '(Hot:', hot, ')');
@@ -67,12 +70,15 @@ export async function onRequest(context) {
         );
     }
 
-    // 4) Parámetros de negocio (Incluyendo tracking_id para afiliados)
+    // 4) Parámetros de negocio (CRÍTICO: Incluir campos requeridos para la firma)
     const businessParams = {
+        keyword: cleanKeyword,
         page_size: '20',
         page_no: '1',
-        keyword: cleanKeyword,
-        tracking_id: env.ALI_TRACKING_ID || 'Domotech_2026'
+        tracking_id: env.ALI_TRACKING_ID || 'Domotech_2026',
+        target_currency: currency,
+        target_language: language,
+        country: country
     };
 
     const METHOD_HOT = 'aliexpress.affiliate.hotproduct.query';
@@ -81,6 +87,7 @@ export async function onRequest(context) {
     // 5) Intento principal
     const primaryMethod = hot ? METHOD_HOT : METHOD_NORMAL;
     console.log('[ALIEXPRESS] Llamando método:', primaryMethod);
+    console.log('[ALIEXPRESS] businessParams:', businessParams);
 
     let apiResponse = await callAliExpressApi(primaryMethod, businessParams, env);
 
