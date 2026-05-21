@@ -1,8 +1,8 @@
 /**
- * Firma TODOS los parámetros (common + business) usando HMAC-SHA256
+ * Firma SOLO los parámetros comunes usando HMAC-SHA256
  * CRÍTICO: Esta es la regla de AliExpress IOP 2024-2026
  * 
- * @param {Object} params - Todos los parámetros (common + business)
+ * @param {Object} params - Parámetros comunes (sin business params)
  * @param {string} secret - APP_SECRET de AliExpress
  * @returns {Promise<string>} Firma en formato hexadecimal mayúscula
  */
@@ -58,7 +58,7 @@ export async function callAliExpressApi(method, businessParams, env) {
         throw new Error('Faltan las credenciales ALI_APP_KEY o ALI_APP_SECRET en el entorno.');
     }
 
-    const API_URL = 'https://api-sg.aliexpress.com/sync/portal/affiliate';
+    const API_URL = 'https://api-sg.aliexpress.com/sync/portal/affiliate/product/query';
     const timestamp = Date.now().toString();
 
     // 1. Parámetros comunes obligatorios
@@ -71,38 +71,21 @@ export async function callAliExpressApi(method, businessParams, env) {
         v: '2.0'
     };
 
-    // 2. Combinar TODOS los parámetros (common + business)
-    const allParams = { ...commonParams, ...businessParams };
+    // 2. Firmar SOLO los parámetros comunes (NO incluir businessParams)
+    const sign = await signRequest(commonParams, APP_SECRET);
 
-    // 3. Firmar TODOS los parámetros
-    const sign = await signRequest(allParams, APP_SECRET);
-
-    // 4. Construir el body en orden:
-    //    1. Parámetros comunes ordenados
-    //    2. Parámetros de negocio (sin reordenar)
-    //    3. Firma al final
-    const bodyParts = [];
-
-    // Parámetros comunes ordenados
-    const sortedCommonKeys = Object.keys(commonParams).sort();
-    for (const key of sortedCommonKeys) {
-        bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(commonParams[key])}`);
-    }
-
-    // Parámetros de negocio (sin reordenar)
-    for (const key of Object.keys(businessParams)) {
-        bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(businessParams[key])}`);
-    }
-
-    // Firma al final
-    bodyParts.push(`sign=${encodeURIComponent(sign)}`);
-    const body = bodyParts.join('&');
+    // 3. Construir el body como JSON
+    const body = JSON.stringify({
+        biz_param: businessParams,
+        ...commonParams,
+        sign
+    });
 
     console.log('[ALIEXPRESS] URL:', API_URL);
-    console.log('[ALIEXPRESS] Parámetros firmados:', Object.keys(allParams).sort());
+    console.log('[ALIEXPRESS] Parámetros firmados:', Object.keys(commonParams).sort());
     console.log('[ALIEXPRESS] Firma:', sign.substring(0, 16) + '...');
 
-    // 5. Petición POST con timeout
+    // 4. Petición POST con timeout
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
@@ -110,7 +93,7 @@ export async function callAliExpressApi(method, businessParams, env) {
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'application/json'
             },
             body,
             signal: controller.signal
