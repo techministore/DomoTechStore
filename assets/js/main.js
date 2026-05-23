@@ -401,6 +401,31 @@ function processBestProducts(products) {
 // 🎨 UI RENDERING FUNCTIONS
 // ============================================================================
 
+/**
+ * Genera un enlace de afiliado de Miravia con cacheo local
+ */
+function getMiraviaAffiliateUrl(productTitle) {
+    try {
+        const cacheKey = `miravia_cache_${productTitle.toLowerCase().trim()}`;
+        const cached = localStorage.getItem(cacheKey);
+        
+        if (cached) {
+            return cached;
+        }
+
+        const AWIN_MID = "30521";
+        const AWIN_AFFID = "1636287";
+        const searchUrl = `https://www.miravia.es/search?q=${encodeURIComponent(productTitle)}`;
+        const affiliateUrl = `https://www.awin1.com/cread.php?awinmid=${AWIN_MID}&awinaffid=${AWIN_AFFID}&ued=${encodeURIComponent(searchUrl)}`;
+        
+        // Guardar en caché por 24 horas
+        localStorage.setItem(cacheKey, affiliateUrl);
+        return affiliateUrl;
+    } catch (e) {
+        return `https://www.miravia.es/search?q=${encodeURIComponent(productTitle)}`;
+    }
+}
+
 function renderProductCard(product) {
     const tagClass = product.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
     const hasOldPrice = product.original_price && parseFloat(product.original_price) > parseFloat(product.price);
@@ -408,11 +433,15 @@ function renderProductCard(product) {
     const image = product.image || CONFIG.FALLBACK_PLACEHOLDER;
     const aliLink = product.url || product.link || '#';
     
-    // Configuración de Miravia
-    const miraviaSearchUrl = `https://www.awin1.com/cread.php?awinmid=30521&awinaffid=1636287&ued=${encodeURIComponent('https://www.miravia.es/search?q=' + encodeURIComponent(product.title))}`;
+    // Generación inteligente de enlace Miravia con caché
+    const miraviaUrl = getMiraviaAffiliateUrl(product.title);
+
+    // Lógica de "Mejor tienda" automática
+    // Si el producto viene de un fallback de AliExpress (vacio o error), priorizamos Miravia visualmente
+    const isAliFallback = !product.id || product.id === 'unknown';
 
     return `
-        <article class="card product-card" style="position: relative;">
+        <article class="card product-card ${isAliFallback ? 'priority-miravia' : ''}" style="position: relative;">
             ${product.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${product.tag}</div>` : ''}
             <div class="product-image-container">
                 <img src="${image}" alt="${product.title}" loading="lazy" onerror="this.src='${CONFIG.FALLBACK_PLACEHOLDER}'">
@@ -425,11 +454,15 @@ function renderProductCard(product) {
             ${product.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${product.rating} | ${product.sales || 0}+ vendidos</div>` : ''}
             
             <div class="product-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-                <a href="${aliLink}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${product.id || 'unknown'}', 'aliexpress')">
-                    Comprar en AliExpress →
+                <a href="${aliLink}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" 
+                   style="order: ${isAliFallback ? 2 : 1}; opacity: ${isAliFallback ? 0.7 : 1}"
+                   onclick="trackClick('${product.id || 'unknown'}', 'aliexpress')">
+                    ${isAliFallback ? 'Buscar en AliExpress' : 'Comprar en AliExpress →'}
                 </a>
-                <a href="${miraviaSearchUrl}" class="btn-miravia" target="_blank" rel="nofollow sponsored" onclick="trackClick('${product.id || 'unknown'}', 'miravia', null, ${JSON.stringify(product).replace(/"/g, '&quot;')})">
-                    Ver en Miravia (Awin)
+                <a href="${miraviaUrl}" class="btn-miravia" target="_blank" rel="nofollow sponsored"
+                   style="order: ${isAliFallback ? 1 : 2}; border-color: ${isAliFallback ? 'var(--primary)' : '#e2e8f0'}"
+                   onclick="trackClick('${product.id || 'unknown'}', 'miravia', 'search_fallback', ${JSON.stringify(product).replace(/"/g, '&quot;')})">
+                    ${isAliFallback ? '🚀 Ver en Miravia (Envío Rápido)' : 'Ver en Miravia (Awin)'}
                 </a>
             </div>
         </article>
