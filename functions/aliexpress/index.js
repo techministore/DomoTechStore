@@ -3,6 +3,38 @@ import { handleOptions, corsHeaders } from '../utils/cors.js';
 import { parseAliExpressItem } from '../utils/parseAliExpress.js';
 
 /**
+ * Registra información enviada a AliExpress
+ */
+function logAliExpressRequest(method, params, endpoint) {
+    const timestamp = new Date().toISOString();
+    const requestInfo = {
+        timestamp,
+        method,
+        endpoint,
+        params: {
+            keyword: params.keyword || 'N/A',
+            page_size: params.page_size || 'N/A',
+            page_no: params.page_no || 'N/A',
+            tracking_id: params.tracking_id || 'N/A',
+            promotion_link_type: params.promotion_link_type || 'N/A'
+        }
+    };
+    
+    // Log en consola con formato claro
+    console.log('═══════════════════════════════════════════════════');
+    console.log('📤 REQUEST_TO_ALIEXPRESS');
+    console.log('═══════════════════════════════════════════════════');
+    console.log(`⏰ Timestamp: ${requestInfo.timestamp}`);
+    console.log(`🔗 Endpoint: ${requestInfo.endpoint}`);
+    console.log(`📋 Método: ${requestInfo.method}`);
+    console.log('📦 Parámetros:');
+    console.log(JSON.stringify(requestInfo.params, null, 2));
+    console.log('═══════════════════════════════════════════════════');
+    
+    return requestInfo;
+}
+
+/**
  * Cloudflare Pages Function: /aliexpress
  * Maneja búsquedas de productos y generación de enlaces s.click
  */
@@ -30,6 +62,10 @@ export async function onRequest(context) {
                 promotion_link_type: '0', // s.click
                 source_values: `https://www.aliexpress.com/item/${productId}.html`
             };
+
+            // 📤 Registrar información enviada a AliExpress
+            const endpoint = env.ALI_API_ENDPOINT || 'aliexpress.affiliate.link.generate';
+            logAliExpressRequest('aliexpress.affiliate.link.generate', bizParams, endpoint);
 
             const linkRes = await callAliExpressApi('aliexpress.affiliate.link.generate', bizParams, env);
             const promotionLink = linkRes?.aliexpress_affiliate_link_generate_response?.resp_result?.result?.promotion_links?.promotion_link?.[0]?.promotion_link;
@@ -89,6 +125,11 @@ export async function onRequest(context) {
     try {
         // Intento principal
         const method = hot ? METHOD_HOT : METHOD_NORMAL;
+        
+        // 📤 Registrar información enviada a AliExpress
+        const endpoint = env.ALI_API_ENDPOINT || 'https://api.aliexpress.com/';
+        logAliExpressRequest(method, businessParams, endpoint);
+
         let apiResponse = await callAliExpressApi(method, businessParams, env);
 
         // Fallback inteligente
@@ -97,6 +138,8 @@ export async function onRequest(context) {
 
         if (hasError && hot) {
             console.log('[FALLBACK] Hot falló, intentando normal...');
+            // 📤 Registrar intento de fallback
+            logAliExpressRequest(METHOD_NORMAL, businessParams, endpoint);
             apiResponse = await callAliExpressApi(METHOD_NORMAL, businessParams, env);
         }
 
