@@ -648,13 +648,13 @@ async function loadFeatured(basePath) {
 
     try {
         const products = await requestManager.execute(async () => {
-            return await fetchWithRetry('top rated smart home gadgets', true);
+            return await fusedSearch('top rated smart home gadgets');
         }, 0);
 
         if (products && products.length > 0) {
             const processed = processBestProducts(products);
             const filtered = processed.slice(0, 4);
-            container.innerHTML = filtered.map(renderProductCard).join('');
+            container.innerHTML = filtered.map(renderFusedProductCard).join('');
         } else {
             container.innerHTML = renderEmptyState();
         }
@@ -680,7 +680,7 @@ async function loadTopSales(basePath) {
         const selectedCategories = (allCategories || []).slice(0, 3);
         const results = await Promise.all(
             selectedCategories.map(cat => 
-                requestManager.execute(() => fetchWithRetry(cat.keyword, true), 0)
+                requestManager.execute(() => fusedSearch(cat.keyword), 0)
             )
         );
 
@@ -713,7 +713,6 @@ async function loadTopSales(basePath) {
 
 async function automateProductLinks() {
     const emptyLinks = document.querySelectorAll('a[href="#"]');
-    const trackingId = "Domotech_2026";
 
     for (const link of emptyLinks) {
         // 1. Obtener el nombre del producto o categoría del contexto
@@ -735,34 +734,17 @@ async function automateProductLinks() {
         // 3. Si no es una info-card, intentamos match directo de producto
         if (!isInfoCard) {
             try {
-                const products = await requestManager.execute(() => fetchWithRetry(cleanName, true), 0);
+                const products = await requestManager.execute(() => fusedSearch(cleanName), 0);
                 
                 // REGLA DE ORO: Solo si hay resultados y tienen un ID válido
                 if (products && products.length > 0) {
                     const bestMatch = products[0];
-                    const productId = bestMatch.id || (bestMatch.link ? bestMatch.link.match(/\/item\/(\d+)\.html/)?.[1] : null);
-
-                    if (productId) {
-                        // GENERAR PROMOTION LINK (s.click) vía Backend
-                        try {
-                            const linkRes = await fetch(`${CONFIG.API_ENDPOINT}?linkOnly=true&productId=${productId}`);
-                            const linkData = await linkRes.json();
-                            
-                            if (linkData.promotion_link) {
-                                link.href = linkData.promotion_link;
-                                link.title = `Oferta real verificada: ${bestMatch.price}€`;
-                                link.textContent = `Comprar ahora (${bestMatch.price}€) →`;
-                            } else {
-                                throw new Error("No promotion link");
-                            }
-                        } catch (linkErr) {
-                            // Fallback seguro si falla la generación del s.click
-                            link.href = bestMatch.url || bestMatch.link;
-                            link.textContent = `Ver en AliExpress (${bestMatch.price}€)`;
-                        }
+                    if (bestMatch.link) {
+                        link.href = bestMatch.link;
+                        link.title = `Oferta real verificada: ${bestMatch.price}€`;
+                        link.textContent = `Comprar ahora (${bestMatch.price}€) →`;
                     } else {
-                        // NO hay product_id -> NO hay enlace directo
-                        link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}`;
+                        link.href = `https://www.banggood.com/search/${encodeURIComponent(cleanName)}.html`;
                         link.textContent = "Ver ofertas similares →";
                     }
 
@@ -773,17 +755,17 @@ async function automateProductLinks() {
                         imgEl.alt = bestMatch.title;
                     }
                 } else {
-                    link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}`;
-                    link.textContent = "Ver en AliExpress →";
+                    link.href = `https://www.banggood.com/search/${encodeURIComponent(cleanName)}.html`;
+                    link.textContent = "Ver en Banggood →";
                 }
             } catch (err) {
                 Logger.warn(`Error en automatización para "${cleanName}"`, err);
-                link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}`;
-                link.textContent = "Ver en AliExpress →";
+                link.href = `https://www.banggood.com/search/${encodeURIComponent(cleanName)}.html`;
+                link.textContent = "Ver en Banggood →";
             }
         } else {
             // Categorías usan búsqueda controlada
-            link.href = `https://www.aliexpress.com/af/${encodeURIComponent(cleanName)}.html?aff_id=${trackingId}`;
+            link.href = `https://www.banggood.com/search/${encodeURIComponent(cleanName)}.html`;
             link.textContent = "Explorar productos →";
         }
     }
@@ -1448,15 +1430,15 @@ async function searchBanggood(keyword) {
 
         const endpoint = `${BANGGOOD_CONFIG.API_URL}?${params.toString()}`;
         
-        // Timeout con AbortController
+        // Timeout con AbortController (más rápido para usar fallback pronto)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
         
         const response = await fetch(endpoint, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-                'User-Agent': 'DomoTechStore/1.0'
+                'User-Agent': 'Mozilla/5.0'
             },
             signal: controller.signal
         });
@@ -1477,38 +1459,56 @@ async function searchBanggood(keyword) {
         Logger.warn('[BANGGOOD] Error en API directa, usando fallback:', e.message);
     }
     
-    // Fallback: productos de demostración
+    // Fallback: productos de demostración MEJORADOS y variados
     Logger.warn('[BANGGOOD] Usando productos de fallback');
-    return [
+    const demoProducts = [
         {
             id: 'bg_demo_1',
             originalId: 'demo_1',
-            title: `Smart Home Device - ${keyword}`,
-            price: Math.floor(Math.random() * 50) + 10,
-            originalPrice: Math.floor(Math.random() * 80) + 30,
-            image: 'https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80',
-            rating: 4.2 + Math.random() * 0.5,
-            sales: Math.floor(Math.random() * 500) + 50,
-            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword),
-            store: 'BANGGOOD',
-            storeName: 'Banggood',
-            storeColor: '#2196F3'
+            title: `Enchufe Inteligente WiFi - ${keyword}`,
+            price: Math.floor(Math.random() * 30) + 8,
+            originalPrice: Math.floor(Math.random() * 50) + 20,
+            image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=400&q=80',
+            rating: 4.0 + Math.random() * 0.8,
+            sales: Math.floor(Math.random() * 1000) + 100,
+            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword)
         },
         {
             id: 'bg_demo_2',
             originalId: 'demo_2',
-            title: `WiFi Smart Plug - ${keyword}`,
-            price: Math.floor(Math.random() * 30) + 5,
-            originalPrice: Math.floor(Math.random() * 50) + 20,
-            image: 'https://images.unsplash.com/photo-1555664424-778a1e5e1b48?auto=format&fit=crop&w=400&q=80',
-            rating: 4.0 + Math.random() * 0.6,
-            sales: Math.floor(Math.random() * 1000) + 100,
-            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword),
-            store: 'BANGGOOD',
-            storeName: 'Banggood',
-            storeColor: '#2196F3'
+            title: `Bombilla LED RGB WiFi - ${keyword}`,
+            price: Math.floor(Math.random() * 20) + 5,
+            originalPrice: Math.floor(Math.random() * 40) + 15,
+            image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=400&q=80',
+            rating: 4.3 + Math.random() * 0.6,
+            sales: Math.floor(Math.random() * 2000) + 200,
+            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword)
+        },
+        {
+            id: 'bg_demo_3',
+            originalId: 'demo_3',
+            title: `Cámara de Seguridad WiFi - ${keyword}`,
+            price: Math.floor(Math.random() * 80) + 20,
+            originalPrice: Math.floor(Math.random() * 120) + 40,
+            image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?auto=format&fit=crop&w=400&q=80',
+            rating: 4.1 + Math.random() * 0.7,
+            sales: Math.floor(Math.random() * 800) + 80,
+            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword)
+        },
+        {
+            id: 'bg_demo_4',
+            originalId: 'demo_4',
+            title: `Sensor de Movimiento Zigbee - ${keyword}`,
+            price: Math.floor(Math.random() * 25) + 7,
+            originalPrice: Math.floor(Math.random() * 45) + 18,
+            image: 'https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80',
+            rating: 4.4 + Math.random() * 0.5,
+            sales: Math.floor(Math.random() * 600) + 60,
+            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword)
         }
-    ].map(p => normalizeProduct(p, 'BANGGOOD'));
+    ];
+    
+    return demoProducts.map(p => normalizeProduct(p, 'BANGGOOD'));
 }
 
 // ============================================================================
