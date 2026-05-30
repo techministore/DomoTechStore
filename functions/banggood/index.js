@@ -1,75 +1,54 @@
-import { corsHeaders, handleOptions } from "../utils/cors.js";
-import { callBanggoodApi } from "../utils/banggoodApi.js";
-import { parseBanggoodItem } from "../utils/parseAliExpress.js";
+import CryptoJS from "crypto-js";
 
-/**
- * Cloudflare Pages Function: /api/banggood
- * Busca productos en Banggood con API simplificada
- */
 export async function onRequest(context) {
-    const { request, env } = context;
-    const url = new URL(request.url);
-
-    // 0. Manejo de preflight (CORS)
-    const optionsResponse = handleOptions(request);
-    if (optionsResponse) return optionsResponse;
-
-    const keyword = url.searchParams.get('keyword') || 'smart home';
-
-    if (!keyword || keyword.trim().length === 0) {
-        return new Response(JSON.stringify({ error: "Keyword requerido", items: [] }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-
-    console.log('────────────────────────────────────────────');
-    console.log('[BANGGOOD] Búsqueda:', keyword);
-
-    // Caché simple
-    let cache;
-    try { cache = caches.default; } catch (e) {}
-    const cacheKey = new Request(url.toString());
-
-    if (cache) {
-        try {
-            const cached = await cache.match(cacheKey);
-            if (cached) {
-                console.log('[CACHE] Hit Banggood!');
-                return cached;
-            }
-        } catch (e) {}
-    }
-
     try {
-        // Llamar a la API de Banggood
-        const rawData = await callBanggoodApi(keyword, env);
-        
-        // Parsear productos
-        const items = (rawData.data || rawData.items || [])
-            .map(item => parseBanggoodItem(item))
-            .filter(item => item && item.id)
-            .slice(0, 20);
+        const { request, env } = context;
+        const url = new URL(request.url);
+        const keyword = url.searchParams.get("q") || "";
+        const page = url.searchParams.get("page") || 1;
+        const pageSize = url.searchParams.get("pageSize") || 20;
 
-        console.log('[BANGGOOD] Éxito:', items.length, 'productos');
+        const APP_KEY = env.BANGGOOD_APP_KEY;
+        const APP_SECRET = env.BANGGOOD_APP_SECRET;
 
-        const response = new Response(JSON.stringify({ items }), {
-            status: 200,
-            headers: {
-                ...corsHeaders,
-                'Content-Type': 'application/json',
-                'Cache-Control': 'public, max-age=600'
-            }
+        const params = {
+            api: "product.search",
+            app_key: APP_KEY,
+            keywords: keyword,
+            page,
+            page_size: pageSize,
+            timestamp: Math.floor(Date.now() / 1000)
+        };
+
+        // Ordenar parámetros
+        const sortedKeys = Object.keys(params).sort();
+        let signString = "";
+        sortedKeys.forEach(key => {
+            signString += key + params[key];
         });
 
-        if (cache) context.waitUntil(cache.put(cacheKey, response.clone()));
-        return response;
+        // Firmar
+        const sign = CryptoJS.MD5(APP_SECRET + signString + APP_SECRET).toString();
+
+        // Construir query
+        const query = new URLSearchParams({
+            ...params,
+            sign
+        });
+
+        const apiUrl = `https://api.banggood.com/api2/request.api?${query.toString()}`;
+
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+
+        return new Response(JSON.stringify(data), {
+            headers: { "Content-Type": "application/json" }
+        });
 
     } catch (err) {
-        console.error('[ERROR] Banggood:', err.message);
-        return new Response(JSON.stringify({ error: err.message, items: [] }), {
+        return new Response(JSON.stringify({ error: err.message }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            headers: { "Content-Type": "application/json" }
         });
     }
 }

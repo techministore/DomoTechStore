@@ -1432,31 +1432,28 @@ function normalizeProduct(product, store) {
     };
 }
 
-// Módulo de búsqueda Banggood DIRECTO desde el navegador
+// Módulo de búsqueda Banggood usando el Worker de Cloudflare
 async function searchBanggood(keyword) {
     try {
-        Logger.info('[BANGGOOD] Buscando directamente desde frontend:', keyword);
+        Logger.info('[BANGGOOD] Buscando usando Worker Cloudflare:', keyword);
         
-        // Construir parámetros
+        // Construir la URL del Worker
         const params = new URLSearchParams({
-            app_key: BANGGOOD_CONFIG.APP_KEY,
-            keywords: keyword.trim(),
+            q: keyword.trim(),
             page: 1,
-            page_size: 20,
-            language: 'en'
+            pageSize: 20
         });
 
-        const endpoint = `${BANGGOOD_CONFIG.API_URL}?${params.toString()}`;
+        const endpoint = `/banggood?${params.toString()}`;
         
-        // Timeout con AbortController (más rápido para usar fallback pronto)
+        // Timeout con AbortController
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         
         const response = await fetch(endpoint, {
             method: 'GET',
             headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0'
+                'Accept': 'application/json'
             },
             signal: controller.signal
         });
@@ -1466,7 +1463,7 @@ async function searchBanggood(keyword) {
         if (response.ok) {
             const data = await response.json();
             const items = data.data || data.items || [];
-            Logger.info('[BANGGOOD] Éxito:', items.length, 'productos');
+            Logger.info('[BANGGOOD] Éxito desde Worker:', items.length, 'productos');
             
             if (items.length > 0) {
                 const normalized = items
@@ -1482,7 +1479,7 @@ async function searchBanggood(keyword) {
         }
 
     } catch (e) {
-        Logger.warn('[BANGGOOD] Error en API directa, usando fallback:', e.message);
+        Logger.warn('[BANGGOOD] Error en Worker, usando fallback:', e.message);
     }
     
     // Fallback: productos de demostración MEJORADOS y variados
