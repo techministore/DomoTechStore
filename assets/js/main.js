@@ -1429,83 +1429,22 @@ function normalizeProduct(product, store) {
     };
 }
 
-// Módulo de búsqueda Banggood usando el Worker de Cloudflare
 async function searchBanggood(keyword) {
-    try {
-        Logger.info('[BANGGOOD] Buscando usando Worker Cloudflare:', keyword);
-        
-        const url = `/banggood?q=${encodeURIComponent(keyword)}&page=1&pageSize=20`;
-        const res = await fetch(url);
-        const data = await res.json();
+    console.log("[BANGGOOD] Llamando a Worker:", keyword);
 
-        console.log('[BANGGOOD] Respuesta completa del Worker:', data);
+    const url = `/banggood?q=${encodeURIComponent(keyword)}&page=1&pageSize=20`;
 
-        // Primero, intentamos encontrar productos en la respuesta
-        let items = [];
-        if (data.data?.products) items = data.data.products;
-        else if (data.items) items = data.items;
-        else if (data.products) items = data.products;
-        else if (Array.isArray(data)) items = data;
+    const res = await fetch(url);
+    const data = await res.json();
 
-        Logger.info('[BANGGOOD] Items encontrados:', items.length, 'productos');
-        
-        if (items.length > 0) {
-            const normalized = items
-                .map(p => normalizeProduct(p, 'BANGGOOD'))
-                .filter(p => p !== null);
-            
-            Logger.info('[BANGGOOD] Productos válidos después de filtrar:', normalized.length);
-            
-            if (normalized.length > 0) {
-                return normalized;
-            }
-        }
-
-    } catch (e) {
-        Logger.warn('[BANGGOOD] Error en Worker, usando fallback:', e.message);
+    if (!data || data.code !== 0) {
+        console.warn("[BANGGOOD] Error en Worker, usando fallback:", data);
+        return [];
     }
-    
-    // Fallback: productos de demostración (siempre hay algo)
-    Logger.warn('[BANGGOOD] Usando productos de fallback');
-    const demoProducts = [
-        {
-            product_id: '1234567',
-            title: `Enchufe Inteligente WiFi - ${keyword}`,
-            price: Math.floor(Math.random() * 30) + 8,
-            original_price: Math.floor(Math.random() * 50) + 20,
-            image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=400&q=80',
-            rating: 4.0 + Math.random() * 0.8,
-            sales: Math.floor(Math.random() * 1000) + 100
-        },
-        {
-            product_id: '2345678',
-            title: `Bombilla LED RGB WiFi - ${keyword}`,
-            price: Math.floor(Math.random() * 20) + 5,
-            original_price: Math.floor(Math.random() * 40) + 15,
-            image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=400&q=80',
-            rating: 4.3 + Math.random() * 0.6,
-            sales: Math.floor(Math.random() * 2000) + 200
-        },
-        {
-            product_id: '3456789',
-            title: `Cámara de Seguridad WiFi - ${keyword}`,
-            price: Math.floor(Math.random() * 80) + 20,
-            original_price: Math.floor(Math.random() * 120) + 40,
-            image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?auto=format&fit=crop&w=400&q=80',
-            rating: 4.1 + Math.random() * 0.7,
-            sales: Math.floor(Math.random() * 800) + 80
-        },
-        {
-            product_id: '4567890',
-            title: `Sensor de Movimiento Zigbee - ${keyword}`,
-            price: Math.floor(Math.random() * 25) + 7,
-            original_price: Math.floor(Math.random() * 45) + 18,
-            image: 'https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80',
-            rating: 4.4 + Math.random() * 0.5,
-            sales: Math.floor(Math.random() * 600) + 60
-        }
-    ];
-    return demoProducts.map(p => normalizeProduct(p, 'BANGGOOD'));
+
+    // Normalizamos los productos antes de devolverlos
+    const products = data.data?.products || [];
+    return products.map(p => normalizeProduct(p, 'BANGGOOD')).filter(p => p !== null);
 }
 
 // ============================================================================
