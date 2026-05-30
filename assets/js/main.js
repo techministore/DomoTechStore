@@ -1966,30 +1966,10 @@ async function loadPersonalizedRecommendations(basePath) {
         const titleEl = document.getElementById('recomendaciones-titulo');
         if (titleEl) titleEl.textContent = title;
 
-        // Usar fetchWithRetry (la función real de la API)
-        const products = await fetchWithRetry(keyword, true);
+        // Usar searchBanggood (API de Banggood)
+        const products = await searchBanggood(keyword);
         if (products && products.length > 0) {
-            container.innerHTML = products.slice(0, 4).map(p => {
-                const tagClass = p.tag === "RECOMENDADO" ? "badge badge-recommended" : "badge";
-                const hasOldPrice = p.original_price && parseFloat(p.original_price) > parseFloat(p.price);
-                const oldPriceHtml = hasOldPrice ? `<span class="old-price">${p.original_price}€</span>` : '';
-                return `
-                <article class="card product-card" style="position: relative;">
-                    ${p.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
-                    <div class="urgency-badge">⚡ ¡OFERTA REAL!</div>
-                    <div class="product-image-container">
-                        <img src="${p.image || CONFIG.FALLBACK_PLACEHOLDER}" alt="${p.title}" loading="lazy" onerror="this.src='${CONFIG.FALLBACK_PLACEHOLDER}'">
-                    </div>
-                    <h3>${p.title}</h3>
-                    <div class="price-container">
-                        ${oldPriceHtml}
-                        <span class="current-price">${p.price}€</span>
-                    </div>
-                    ${p.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${p.rating} | ${p.sales || 0}+ vendidos</div>` : ''}
-                    <a href="${p.url || p.link}" class="btn-aliexpress" target="_blank" onclick="trackClick('${p.id}', 'aliexpress', '${keyword}', ${JSON.stringify(p).replace(/"/g, '&quot;')})">Comprar Ahora →</a>
-                </article>
-                `;
-            }).join('');
+            container.innerHTML = products.slice(0, 4).map(renderFusedProductCard).join('');
         } else {
             if (container.parentElement) container.parentElement.style.display = 'none';
         }

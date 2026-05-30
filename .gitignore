@@ -6,6 +6,7 @@ wrangler.toml
 node_modules/
 dist/
 .cache/
+.wrangler/
 
 # OS files
 .DS_Store
