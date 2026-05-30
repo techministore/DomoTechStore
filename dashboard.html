@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Analítico | DomoTechStore</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <div id="header-placeholder"></div>
+
+    <main>
+        <section class="section">
+            <div class="container">
+                <h1 class="section-title" style="text-align:left; margin-bottom:40px;">📈 Dashboard Analítico</h1>
+                
+                <div id="dashboard-container">
+                    <!-- El dashboard se renderizará aquí automáticamente -->
+                </div>
+
+                <div style="margin-top:60px;">
+                    <h2 class="section-title" style="text-align:left; margin-bottom:30px;">📋 Secciones de Prueba</h2>
+                    
+                    <div class="grid grid-2" style="margin-bottom:40px;">
+                        <div class="card">
+                            <h3 style="margin-bottom:20px; font-weight:700;">🏆 Top 10 del Mes</h3>
+                            <div id="top10-test"></div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3 style="margin-bottom:20px; font-weight:700;">🎯 Recomendaciones Personalizadas</h3>
+                            <div id="recomendaciones-test" class="grid grid-2"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 style="margin-bottom:20px; font-weight:700;">🔔 Alertas de Precio (Simulación)</h3>
+                        <p style="margin-bottom:15px; color:var(--muted-text);">Haz clic en un producto en la página principal para que se añada automáticamente al seguimiento de precios</p>
+                        <button onclick="showPriceDropAlerts()" class="btn-aliexpress" style="padding:10px 25px;">🔍 Comprobar Bajadas de Precio</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script src="/assets/js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Renderizar las secciones de prueba
+            renderTop10DelMes('top10-test');
+            renderRecomendacionesPersonalizadas('recomendaciones-test');
+        });
+    </script>
+</body>
+</html>

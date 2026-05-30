@@ -866,9 +866,10 @@ function trackClick(productId, provider, contextInfo = null, productData = null)
             stats.conversions[productId] = (stats.conversions[productId] || 0) + 1;
         }
 
-        // NUEVO: Guardar historial de precios
+        // NUEVO: Guardar historial de precios y añadir a alertas automáticamente
         if (productData && productId) {
             trackPriceHistory(productId, productData);
+            trackProductForPriceAlerts(productData);
         }
         
         if (stats.clicks.length > 100) stats.clicks.shift();
@@ -1047,6 +1048,320 @@ async function renderSimilarProducts(targetProduct, containerId) {
     }
 }
 
+// ============================================================================
+// 📊 MÓDULO 1: TOP 10 DEL MES (datos reales de clicks/conversiones)
+// ============================================================================
+function getTop10DelMes() {
+    try {
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": []}');
+        const now = new Date();
+        const mesActual = now.getMonth();
+        const añoActual = now.getFullYear();
+        
+        // Filtrar clicks del mes actual
+        const clicksMes = stats.clicks.filter(click => {
+            const clickDate = new Date(click.timestamp);
+            return clickDate.getMonth() === mesActual && clickDate.getFullYear() === añoActual;
+        });
+        
+        // Contar frecuencia por producto
+        const contador = {};
+        clicksMes.forEach(click => {
+            if (click.id) {
+                contador[click.id] = (contador[click.id] || 0) + 1;
+            }
+        });
+        
+        // Ordenar y tomar top 10
+        const top10 = Object.entries(contador)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([id, count]) => ({ id, count }));
+            
+        return top10;
+    } catch (e) {
+        Logger.error("Error obteniendo Top 10 del mes:", e);
+        return [];
+    }
+}
+
+async function renderTop10DelMes(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    try {
+        const top10 = getTop10DelMes();
+        if (top10.length === 0) {
+            container.innerHTML = '<p style="text-align:center; opacity:0.5;">Aún no hay datos suficientes para el Top 10 del mes</p>';
+            return;
+        }
+        
+        // Intentar cargar detalles de productos (simulado por ahora)
+        let html = '<div style="display:grid; gap:15px;">';
+        top10.forEach((item, index) => {
+            html += `
+                <div class="card" style="display:flex; align-items:center; gap:15px; padding:15px;">
+                    <div style="width:40px; height:40px; background:var(--primary); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.2rem;">
+                        ${index + 1}
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-weight:700;">Producto ID: ${item.id}</div>
+                        <div style="font-size:0.85rem; color:var(--muted-text);">${item.count} clicks este mes</div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+        
+    } catch (e) {
+        Logger.error("Error renderizando Top 10 del mes:", e);
+    }
+}
+
+// ============================================================================
+// 🎯 MÓDULO 2: RECOMENDACIÓN PERSONAL POR USUARIO (mejorada)
+// ============================================================================
+function getUserInterests() {
+    try {
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"interests": {}}');
+        return Object.entries(stats.interests)
+            .sort((a, b) => b[1] - a[1]);
+    } catch (e) {
+        return [];
+    }
+}
+
+async function renderRecomendacionesPersonalizadas(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    try {
+        const interests = getUserInterests();
+        if (interests.length === 0) {
+            container.innerHTML = '<p style="text-align:center; opacity:0.5;">Explora productos para generar recomendaciones personalizadas</p>';
+            return;
+        }
+        
+        // Usar el interés principal para buscar productos
+        const topInterest = interests[0][0];
+        const keyword = topInterest.replace(/-/g, ' ');
+        const products = await fetchWithRetry(keyword, true);
+        
+        if (products && products.length > 0) {
+            container.innerHTML = products.slice(0, 4).map(renderProductCard).join('');
+        } else {
+            container.innerHTML = '<p style="text-align:center; opacity:0.5;">No hay productos disponibles para tus intereses</p>';
+        }
+        
+    } catch (e) {
+        Logger.error("Error renderizando recomendaciones personalizadas:", e);
+    }
+}
+
+// ============================================================================
+// 📈 MÓDULO 3: PANEL DE ANALÍTICA INTERNO (DASHBOARD)
+// ============================================================================
+function renderAnaliticaDashboard(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    try {
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": [], "total": 0, "interests": {}}');
+        const top10 = getTop10DelMes();
+        const priceHistory = JSON.parse(localStorage.getItem('domotech_price_history') || '{}');
+        
+        const productosTrackeados = Object.keys(priceHistory).length;
+        
+        container.innerHTML = `
+            <div class="grid grid-3" style="margin-bottom:40px;">
+                <div class="card" style="text-align:center;">
+                    <div style="font-size:3rem; font-weight:800; color:var(--primary);">${stats.total}</div>
+                    <div style="color:var(--muted-text); text-transform:uppercase; font-size:0.9rem; font-weight:700;">Clicks Totales</div>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <div style="font-size:3rem; font-weight:800; color:#22c55e;">${top10.length}</div>
+                    <div style="color:var(--muted-text); text-transform:uppercase; font-size:0.9rem; font-weight:700;">Top Productos Mes</div>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <div style="font-size:3rem; font-weight:800; color:#f59e0b;">${productosTrackeados}</div>
+                    <div style="color:var(--muted-text); text-transform:uppercase; font-size:0.9rem; font-weight:700;">Precios Trackeados</div>
+                </div>
+            </div>
+            
+            <div class="grid grid-2">
+                <div class="card">
+                    <h3 style="margin-bottom:20px; font-weight:700;">📊 Intereses del Usuario</h3>
+                    ${Object.entries(stats.interests).length > 0 
+                        ? Object.entries(stats.interests).sort((a,b) => b[1]-a[1]).slice(0, 5).map(([key, count]) => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:8px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                                <span>${key}</span>
+                                <span style="font-weight:700; color:var(--primary);">${count}</span>
+                            </div>
+                        `).join('')
+                        : '<p style="opacity:0.5;">Aún no hay datos de intereses</p>'
+                    }
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom:20px; font-weight:700;">🏆 Top 10 del Mes</h3>
+                    <div id="top10-dashboard"></div>
+                </div>
+            </div>
+            
+            <div style="margin-top:30px; text-align:center;">
+                <button onclick="limpiarDatosAnalitica()" class="btn-aliexpress" style="padding:10px 30px;">🧹 Limpiar Datos de Analítica</button>
+            </div>
+        `;
+        
+        // Renderizar top 10 dentro del dashboard
+        renderTop10DelMes('top10-dashboard');
+        
+    } catch (e) {
+        Logger.error("Error renderizando dashboard:", e);
+    }
+}
+
+function limpiarDatosAnalitica() {
+    if (confirm('¿Estás seguro de que quieres limpiar todos los datos de analítica?')) {
+        localStorage.removeItem('domotech_stats');
+        localStorage.removeItem('domotech_price_history');
+        alert('Datos limpiados correctamente');
+        location.reload();
+    }
+}
+
+// ============================================================================
+// 🔔 MÓDULO 4: SISTEMA DE ALERTAS DE BAJADA DE PRECIO
+// ============================================================================
+function trackProductForPriceAlerts(product) {
+    try {
+        const alerts = JSON.parse(localStorage.getItem('domotech_price_alerts') || '[]');
+        const existing = alerts.find(a => a.id === product.id);
+        
+        if (!existing) {
+            alerts.push({
+                id: product.id,
+                title: product.title,
+                image: product.image,
+                initialPrice: parseFloat(product.price),
+                currentPrice: parseFloat(product.price),
+                lowestPrice: parseFloat(product.price),
+                addedAt: Date.now()
+            });
+            localStorage.setItem('domotech_price_alerts', JSON.stringify(alerts));
+            Logger.info(`Producto añadido a alertas de precio: ${product.title}`);
+            return true;
+        }
+        return false;
+    } catch (e) {
+        Logger.error("Error añadiendo alerta de precio:", e);
+        return false;
+    }
+}
+
+function checkPriceDrops() {
+    try {
+        const alerts = JSON.parse(localStorage.getItem('domotech_price_alerts') || '[]');
+        const priceHistory = JSON.parse(localStorage.getItem('domotech_price_history') || '{}');
+        const drops = [];
+        
+        alerts.forEach(alert => {
+            const history = priceHistory[alert.id];
+            if (history && history.length >= 2) {
+                const latest = history[history.length - 1];
+                const previous = history[history.length - 2];
+                
+                if (latest.price < alert.initialPrice) {
+                    const dropPercent = Math.round(((alert.initialPrice - latest.price) / alert.initialPrice) * 100);
+                    drops.push({
+                        ...alert,
+                        newPrice: latest.price,
+                        dropPercent
+                    });
+                    
+                    // Actualizar alerta con el precio más bajo
+                    if (latest.price < alert.lowestPrice) {
+                        alert.lowestPrice = latest.price;
+                    }
+                    alert.currentPrice = latest.price;
+                }
+            }
+        });
+        
+        // Guardar alertas actualizadas
+        localStorage.setItem('domotech_price_alerts', JSON.stringify(alerts));
+        
+        return drops;
+    } catch (e) {
+        Logger.error("Error comprobando bajadas de precio:", e);
+        return [];
+    }
+}
+
+function showPriceDropAlerts() {
+    const drops = checkPriceDrops();
+    if (drops.length === 0) return;
+    
+    // Crear notificación simple en la página
+    const notificationContainer = document.createElement('div');
+    notificationContainer.style.cssText = 'position:fixed; top:100px; right:20px; z-index:10000; max-width:350px;';
+    
+    drops.forEach(drop => {
+        const notification = document.createElement('div');
+        notification.className = 'card';
+        notification.style.cssText = 'margin-bottom:10px; animation:slideIn 0.3s ease;';
+        notification.innerHTML = `
+            <div style="display:flex; gap:10px; align-items:center;">
+                <img src="${drop.image}" style="width:60px; height:60px; object-fit:cover; border-radius:8px;">
+                <div style="flex:1;">
+                    <div style="font-weight:700; font-size:0.9rem;">🔔 ¡Bajada de precio!</div>
+                    <div style="font-size:0.8rem; color:var(--muted-text);">${drop.title}</div>
+                    <div style="margin-top:5px;">
+                        <span style="text-decoration:line-through; opacity:0.5;">${drop.initialPrice}€</span>
+                        <span style="margin-left:8px; color:#22c55e; font-weight:700;">${drop.newPrice}€ (-${drop.dropPercent}%)</span>
+                    </div>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; cursor:pointer; color:var(--muted-text); font-size:1.2rem;">×</button>
+            </div>
+        `;
+        notificationContainer.appendChild(notification);
+    });
+    
+    document.body.appendChild(notificationContainer);
+    
+    // Autoeliminar después de 10 segundos
+    setTimeout(() => {
+        if (notificationContainer.parentElement) {
+            notificationContainer.remove();
+        }
+    }, 10000);
+}
+
+// Función para mostrar la página del dashboard (si existe)
+function initDashboard() {
+    const dashboardContainer = document.getElementById('dashboard-container');
+    if (dashboardContainer) {
+        renderAnaliticaDashboard('dashboard-container');
+    }
+    
+    // Comprobar alertas de precio al cargar la página
+    setTimeout(showPriceDropAlerts, 2000);
+}
+
+// Añadir animación CSS para notificaciones
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+`;
+document.head.appendChild(style);
+
+// Exponer funciones globalmente
+window.limpiarDatosAnalitica = limpiarDatosAnalitica;
+window.trackProductForPriceAlerts = trackProductForPriceAlerts;
+
 /**
  * Carga los productos vistos recientemente por el usuario
  */
@@ -1143,6 +1458,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (typeof mostrarProductos === 'function') {
         mostrarProductos("smart home", "ofertas-dia");
     }
+    
+    // Inicializar módulos avanzados
+    initDashboard();
     
     // Cargar recomendaciones y vistos recientemente después de un breve delay
     setTimeout(() => {
