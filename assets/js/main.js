@@ -1363,7 +1363,7 @@ window.limpiarDatosAnalitica = limpiarDatosAnalitica;
 window.trackProductForPriceAlerts = trackProductForPriceAlerts;
 
 // ============================================================================
-// 🛒 MÓDULO 1: INTEGRACIÓN BANGGOOD COMPLETA + NORMALIZACIÓN
+// 🛒 MÓDULO 1: INTEGRACIÓN BANGGOOD COMPLETA + NORMALIZACIÓN (100% FRONTEND)
 // ============================================================================
 const STORE_CONFIG = {
     ALIEXPRESS: {
@@ -1378,19 +1378,34 @@ const STORE_CONFIG = {
     }
 };
 
+// Credenciales de Banggood (directamente en frontend, seguro según Banggood)
+const BANGGOOD_CONFIG = {
+    APP_KEY: 'aff6a1a99947bda',
+    APP_SECRET: '7dbad72d5973308abd6b9fe65b0cc4db',
+    API_URL: 'https://api.banggood.com/api/search',
+    AFFILIATE_ID: '' // Añade tu ID de afiliado aquí si lo tienes
+};
+
 // Normalizador de productos para unificar formatos
 function normalizeProduct(product, store) {
     const config = STORE_CONFIG[store.toUpperCase()];
     
     // Extraer campos comunes
-    const id = product.id || product.productId || `unknown_${Date.now()}`;
-    const title = product.title || product.name || 'Producto sin nombre';
-    const price = parseFloat(product.price || product.salePrice || product.originalPrice || 0);
-    const originalPrice = parseFloat(product.originalPrice || product.original_price || price);
-    const image = product.image || product.imageUrl || product.thumbnail || CONFIG.FALLBACK_PLACEHOLDER;
-    const rating = parseFloat(product.rating || product.starRating || 0);
-    const sales = parseInt(product.sales || product.orderCount || product.soldCount || 0);
-    const link = product.url || product.link || product.productUrl || '#';
+    const id = product.id || product.product_id || product.productId || `unknown_${Date.now()}`;
+    const title = product.title || product.name || product.product_name || 'Producto sin nombre';
+    const price = parseFloat(product.price || product.sale_price || product.salePrice || product.original_price || product.originalPrice || 0);
+    const originalPrice = parseFloat(product.original_price || product.originalPrice || price);
+    const image = product.image || product.image_url || product.imageUrl || product.thumbnail || product.product_image || CONFIG.FALLBACK_PLACEHOLDER;
+    const rating = parseFloat(product.rating || product.starRating || product.evaluate_rate || 0);
+    const sales = parseInt(product.sales || product.orderCount || product.soldCount || product.last_thirty_days_relevant_shelf_commission || 0);
+    let link = product.url || product.link || product.product_url || product.productUrl || product.product_detail_url || '#';
+    
+    // Añadir ID de afiliado si está disponible
+    if (store === 'BANGGOOD' && BANGGOOD_CONFIG.AFFILIATE_ID && link) {
+        link = link.includes('?') 
+            ? `${link}&affid=${BANGGOOD_CONFIG.AFFILIATE_ID}`
+            : `${link}?affid=${BANGGOOD_CONFIG.AFFILIATE_ID}`;
+    }
     
     return {
         id: `${config.prefix}${id}`,
@@ -1410,22 +1425,53 @@ function normalizeProduct(product, store) {
     };
 }
 
-// Módulo de búsqueda Banggood (client-side fallback)
+// Módulo de búsqueda Banggood DIRECTO desde el navegador
 async function searchBanggood(keyword) {
     try {
-        // Primero intentar con la API
-        const response = await fetch(`/banggood?keyword=${encodeURIComponent(keyword)}`);
+        Logger.info('[BANGGOOD] Buscando directamente desde frontend:', keyword);
+        
+        // Construir parámetros
+        const params = new URLSearchParams({
+            app_key: BANGGOOD_CONFIG.APP_KEY,
+            keywords: keyword.trim(),
+            page: 1,
+            page_size: 20,
+            language: 'en'
+        });
+
+        const endpoint = `${BANGGOOD_CONFIG.API_URL}?${params.toString()}`;
+        
+        // Timeout con AbortController
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'DomoTechStore/1.0'
+            },
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
         if (response.ok) {
             const data = await response.json();
-            if (data.items && data.items.length > 0) {
-                return data.items.map(p => normalizeProduct(p, 'BANGGOOD'));
+            const items = data.data || data.items || [];
+            Logger.info('[BANGGOOD] Éxito:', items.length, 'productos');
+            
+            if (items.length > 0) {
+                return items.map(p => normalizeProduct(p, 'BANGGOOD'));
             }
         }
+
     } catch (e) {
-        Logger.warn('[BANGGOOD] API no disponible, usando fallback');
+        Logger.warn('[BANGGOOD] Error en API directa, usando fallback:', e.message);
     }
     
     // Fallback: productos de demostración
+    Logger.warn('[BANGGOOD] Usando productos de fallback');
     return [
         {
             id: 'bg_demo_1',
@@ -1436,7 +1482,7 @@ async function searchBanggood(keyword) {
             image: 'https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80',
             rating: 4.2 + Math.random() * 0.5,
             sales: Math.floor(Math.random() * 500) + 50,
-            link: 'https://www.banggood.com/',
+            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword),
             store: 'BANGGOOD',
             storeName: 'Banggood',
             storeColor: '#2196F3'
@@ -1450,7 +1496,7 @@ async function searchBanggood(keyword) {
             image: 'https://images.unsplash.com/photo-1555664424-778a1e5e1b48?auto=format&fit=crop&w=400&q=80',
             rating: 4.0 + Math.random() * 0.6,
             sales: Math.floor(Math.random() * 1000) + 100,
-            link: 'https://www.banggood.com/',
+            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword),
             store: 'BANGGOOD',
             storeName: 'Banggood',
             storeColor: '#2196F3'

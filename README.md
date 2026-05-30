@@ -11,24 +11,13 @@ Web de domótica inteligente con comparativas y guías de productos de **AliExpr
 
 ## 🔑 Configuración de API Keys
 
-### 1. Cloudflare Pages Functions (Producción)
-Configura las variables de entorno en el dashboard de Cloudflare Pages:
-- `BANGGOOD_APP_KEY`: `aff6a1a99947bda`
-- `BANGGOOD_APP_SECRET`: Tu App Secret completo (ver tu panel de Banggood)
-- `BANGGOOD_AFFILIATE_ID`: (Opcional) Tu ID de afiliado
+### Banggood (100% Frontend)
+La API de Banggood está directamente integrada en el navegador, sin necesidad de backend.
+- APP_KEY ya está configurada en `assets/js/main.js`
+- Para añadir tu ID de afiliado: edita `BANGGOOD_CONFIG.AFFILIATE_ID` en `assets/js/main.js`
 
-### 2. Desarrollo Local
-Copia los archivos de ejemplo y configura tus keys:
-```bash
-cp wrangler.toml.example wrangler.toml
-cp .dev.vars.example .dev.vars
-# Edita los archivos con tus credenciales
-```
-
-Luego ejecuta:
-```bash
-npx wrangler pages dev .
-```
+### AliExpress (Opcional)
+Si quieres usar la API de AliExpress, configura las credenciales en Cloudflare Pages o usa el fallback integrado.
 
 ## 📁 Páginas Principales
 - `/`: Inicio con ofertas del día
@@ -36,8 +25,11 @@ npx wrangler pages dev .
 - `/dashboard.html`: Panel de analíticas
 
 ## 🛠️ Tecnologías
-- Vanilla JavaScript
+- Vanilla JavaScript (100% Frontend)
 - CSS3 (Dark Theme)
-- Cloudflare Pages Functions
 - localStorage (persistencia)
+- API directa de Banggood (sin CORS)
+
+## ▶️ Cómo Empezar
+Abre `index.html` directamente en tu navegador o usa cualquier servidor web estático. No hace falta compilar ni build steps!
 
