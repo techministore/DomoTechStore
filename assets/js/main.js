@@ -1367,11 +1367,8 @@ const STORE_CONFIG = {
     }
 };
 
-// Credenciales de Banggood (directamente en frontend, seguro según Banggood)
+// Configuración de Banggood (ahora usando Worker de Cloudflare)
 const BANGGOOD_CONFIG = {
-    APP_KEY: 'aff6a1a99947bda',
-    APP_SECRET: '7dbad72d5973308abd6b9fe65b0cc4db',
-    API_URL: 'https://api.banggood.com/api/search',
     AFFILIATE_ID: '' // Añade tu ID de afiliado aquí si lo tienes
 };
 
@@ -1441,53 +1438,16 @@ async function searchBanggood(keyword) {
         const res = await fetch(url);
         const data = await res.json();
 
-        if (data.code !== 0) {
-            console.warn("[BANGGOOD] Error:", data);
-            // Fallback: productos de demostración
-            Logger.warn('[BANGGOOD] Usando productos de fallback');
-            const demoProducts = [
-                {
-                    product_id: '1234567',
-                    title: `Enchufe Inteligente WiFi - ${keyword}`,
-                    price: Math.floor(Math.random() * 30) + 8,
-                    original_price: Math.floor(Math.random() * 50) + 20,
-                    image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=400&q=80',
-                    rating: 4.0 + Math.random() * 0.8,
-                    sales: Math.floor(Math.random() * 1000) + 100
-                },
-                {
-                    product_id: '2345678',
-                    title: `Bombilla LED RGB WiFi - ${keyword}`,
-                    price: Math.floor(Math.random() * 20) + 5,
-                    original_price: Math.floor(Math.random() * 40) + 15,
-                    image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=400&q=80',
-                    rating: 4.3 + Math.random() * 0.6,
-                    sales: Math.floor(Math.random() * 2000) + 200
-                },
-                {
-                    product_id: '3456789',
-                    title: `Cámara de Seguridad WiFi - ${keyword}`,
-                    price: Math.floor(Math.random() * 80) + 20,
-                    original_price: Math.floor(Math.random() * 120) + 40,
-                    image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?auto=format&fit=crop&w=400&q=80',
-                    rating: 4.1 + Math.random() * 0.7,
-                    sales: Math.floor(Math.random() * 800) + 80
-                },
-                {
-                    product_id: '4567890',
-                    title: `Sensor de Movimiento Zigbee - ${keyword}`,
-                    price: Math.floor(Math.random() * 25) + 7,
-                    original_price: Math.floor(Math.random() * 45) + 18,
-                    image: 'https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80',
-                    rating: 4.4 + Math.random() * 0.5,
-                    sales: Math.floor(Math.random() * 600) + 60
-                }
-            ];
-            return demoProducts.map(p => normalizeProduct(p, 'BANGGOOD'));
-        }
+        console.log('[BANGGOOD] Respuesta completa del Worker:', data);
 
-        const items = data.data?.products || [];
-        Logger.info('[BANGGOOD] Éxito desde Worker:', items.length, 'productos');
+        // Primero, intentamos encontrar productos en la respuesta
+        let items = [];
+        if (data.data?.products) items = data.data.products;
+        else if (data.items) items = data.items;
+        else if (data.products) items = data.products;
+        else if (Array.isArray(data)) items = data;
+
+        Logger.info('[BANGGOOD] Items encontrados:', items.length, 'productos');
         
         if (items.length > 0) {
             const normalized = items
@@ -1503,48 +1463,49 @@ async function searchBanggood(keyword) {
 
     } catch (e) {
         Logger.warn('[BANGGOOD] Error en Worker, usando fallback:', e.message);
-        // Fallback: productos de demostración
-        Logger.warn('[BANGGOOD] Usando productos de fallback');
-        const demoProducts = [
-            {
-                product_id: '1234567',
-                title: `Enchufe Inteligente WiFi - ${keyword}`,
-                price: Math.floor(Math.random() * 30) + 8,
-                original_price: Math.floor(Math.random() * 50) + 20,
-                image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=400&q=80',
-                rating: 4.0 + Math.random() * 0.8,
-                sales: Math.floor(Math.random() * 1000) + 100
-            },
-            {
-                product_id: '2345678',
-                title: `Bombilla LED RGB WiFi - ${keyword}`,
-                price: Math.floor(Math.random() * 20) + 5,
-                original_price: Math.floor(Math.random() * 40) + 15,
-                image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=400&q=80',
-                rating: 4.3 + Math.random() * 0.6,
-                sales: Math.floor(Math.random() * 2000) + 200
-            },
-            {
-                product_id: '3456789',
-                title: `Cámara de Seguridad WiFi - ${keyword}`,
-                price: Math.floor(Math.random() * 80) + 20,
-                original_price: Math.floor(Math.random() * 120) + 40,
-                image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?auto=format&fit=crop&w=400&q=80',
-                rating: 4.1 + Math.random() * 0.7,
-                sales: Math.floor(Math.random() * 800) + 80
-            },
-            {
-                product_id: '4567890',
-                title: `Sensor de Movimiento Zigbee - ${keyword}`,
-                price: Math.floor(Math.random() * 25) + 7,
-                original_price: Math.floor(Math.random() * 45) + 18,
-                image: 'https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80',
-                rating: 4.4 + Math.random() * 0.5,
-                sales: Math.floor(Math.random() * 600) + 60
-            }
-        ];
-        return demoProducts.map(p => normalizeProduct(p, 'BANGGOOD'));
     }
+    
+    // Fallback: productos de demostración (siempre hay algo)
+    Logger.warn('[BANGGOOD] Usando productos de fallback');
+    const demoProducts = [
+        {
+            product_id: '1234567',
+            title: `Enchufe Inteligente WiFi - ${keyword}`,
+            price: Math.floor(Math.random() * 30) + 8,
+            original_price: Math.floor(Math.random() * 50) + 20,
+            image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=400&q=80',
+            rating: 4.0 + Math.random() * 0.8,
+            sales: Math.floor(Math.random() * 1000) + 100
+        },
+        {
+            product_id: '2345678',
+            title: `Bombilla LED RGB WiFi - ${keyword}`,
+            price: Math.floor(Math.random() * 20) + 5,
+            original_price: Math.floor(Math.random() * 40) + 15,
+            image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=400&q=80',
+            rating: 4.3 + Math.random() * 0.6,
+            sales: Math.floor(Math.random() * 2000) + 200
+        },
+        {
+            product_id: '3456789',
+            title: `Cámara de Seguridad WiFi - ${keyword}`,
+            price: Math.floor(Math.random() * 80) + 20,
+            original_price: Math.floor(Math.random() * 120) + 40,
+            image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?auto=format&fit=crop&w=400&q=80',
+            rating: 4.1 + Math.random() * 0.7,
+            sales: Math.floor(Math.random() * 800) + 80
+        },
+        {
+            product_id: '4567890',
+            title: `Sensor de Movimiento Zigbee - ${keyword}`,
+            price: Math.floor(Math.random() * 25) + 7,
+            original_price: Math.floor(Math.random() * 45) + 18,
+            image: 'https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80',
+            rating: 4.4 + Math.random() * 0.5,
+            sales: Math.floor(Math.random() * 600) + 60
+        }
+    ];
+    return demoProducts.map(p => normalizeProduct(p, 'BANGGOOD'));
 }
 
 // ============================================================================
