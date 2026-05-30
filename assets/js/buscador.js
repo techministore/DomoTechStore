@@ -1,6 +1,6 @@
 /* 
-    DomoTechStore - Buscador con AliExpress API
-    Filtra elementos locales y busca productos en AliExpress
+    DomoTechStore - Buscador con Banggood
+    Filtra elementos locales y busca productos
     v2.0 - Con manejo robusto de errores y fallbacks
 */
 
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. Filtrado Local (Instantáneo)
             filterLocalItems(searchTerm);
 
-            // 2. Búsqueda en AliExpress (Con debounce para no saturar la API)
+            // 2. Búsqueda (Con debounce para no saturar la API)
             clearTimeout(debounceTimer);
             if (searchTerm.length > 3) {
                 debounceTimer = setTimeout(() => {
@@ -67,16 +67,6 @@ function filterLocalItems(searchTerm) {
     const visibleItems = Array.from(itemsToSearch).filter(item => item.style.display !== 'none');
     handleNoResults(visibleItems.length, document.getElementById('search-input'));
 }
-async function buscarProductos(keyword) {
-    try {
-        const response = await fetch(`/aliexpress?keyword=${encodeURIComponent(keyword)}`);
-        const data = await response.json();
-        return data.items || [];
-    } catch (e) {
-        console.error("Error llamando a la API:", e);
-        return [];
-    }
-}
 
 /**
  * Muestra los productos en la web (Con Loading Skeletons y Optimización)
@@ -92,20 +82,19 @@ async function buscarYMostrarProductos(keyword, customContainerId = null) {
     renderSkeletons(keyword, containerId);
 
     try {
-        // 2. Obtener productos (buscarProductos ya maneja el caché)
-        // Comprobar si buscarProductos existe (está en main.js)
+        // 2. Obtener productos usando fusedSearch (Banggood por defecto)
         let productos = [];
         
-        if (typeof buscarProductos === 'function') {
+        if (typeof fusedSearch === 'function') {
             // ✅ main.js está cargado
-            productos = await buscarProductos(keyword);
+            productos = await fusedSearch(keyword);
         } else {
             // ⚠️ main.js no está cargado, usar fallback
-            console.warn('[buscador.js] buscarProductos no disponible, usando fallback local');
+            console.warn('[buscador.js] fusedSearch no disponible, usando fallback local');
             productos = await buscarProductosLocal(keyword);
         }
         
-        // 3. Renderizar resultados finales
+        // 3. Renderizar resultados finales usando renderFusedProductCard
         renderExternalResults(productos, keyword, containerId);
     } catch (error) {
         console.error('[buscador.js] Error en buscarYMostrarProductos:', error);
@@ -175,7 +164,6 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
     // 1. Prioridad: Contenedor personalizado -> Contenedor "productos" -> Contenedor dinámico
     let grid = customContainerId ? document.getElementById(customContainerId) : document.getElementById('productos');
     let externalSection = document.getElementById('external-results-section');
-    const searchInput = document.getElementById('search-input');
     const container = document.querySelector('main .container') || document.body;
 
     // Si no existe el contenedor "productos", creamos la sección dinámica (para el buscador en Home)
@@ -186,7 +174,7 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
             externalSection.className = 'container';
             externalSection.innerHTML = `
                 <div style="margin-top: 50px; border-top: 1px solid var(--border); padding-top: 30px; margin-bottom: 50px;">
-                    <h2 class="section-title" id="external-title" style="font-size: 1.5rem; text-align: left;">Ofertas destacadas en AliExpress</h2>
+                    <h2 class="section-title" id="external-title" style="font-size: 1.5rem; text-align: left;">Ofertas destacadas</h2>
                     <div id="external-grid" class="grid grid-4"></div>
                 </div>
             `;
@@ -201,9 +189,9 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
     const title = document.getElementById('external-title');
     if (title) {
         if (keyword && keyword !== "smart home") {
-            title.textContent = `Resultados de "${keyword}" en AliExpress`;
+            title.textContent = `Resultados de "${keyword}"`;
         } else {
-            title.textContent = `Recomendaciones Smart Home de AliExpress`;
+            title.textContent = `Recomendaciones Smart Home`;
         }
     }
     
@@ -218,44 +206,49 @@ function renderExternalResults(products, keyword = "", customContainerId = null)
         grid.className = 'grid grid-4';
     }
 
-    grid.innerHTML = (products || []).map(p => {
-        // ✅ DEFENSA: Validar propiedades del producto
-        if (!p || typeof p !== 'object') return '';
+    // Usar renderFusedProductCard si está disponible, else fallback simple
+    if (typeof renderFusedProductCard === 'function') {
+        grid.innerHTML = (products || []).map(renderFusedProductCard).join('');
+    } else {
+        grid.innerHTML = (products || []).map(p => {
+            // ✅ DEFENSA: Validar propiedades del producto
+            if (!p || typeof p !== 'object') return '';
 
-        let badgeClass = "badge";
-        if (p.tag === "MEJOR PRECIO") badgeClass = "badge badge-price";
-        else if (p.tag === "CALIDAD-PRECIO") badgeClass = "badge badge-value";
-        else if (p.tag === "RECOMENDADO" || p.tag === "MÁS VENDIDO") badgeClass = "badge badge-recommended";
+            let badgeClass = "badge";
+            if (p.tag === "MEJOR PRECIO") badgeClass = "badge badge-price";
+            else if (p.tag === "CALIDAD-PRECIO") badgeClass = "badge badge-value";
+            else if (p.tag === "RECOMENDADO" || p.tag === "MÁS VENDIDO") badgeClass = "badge badge-recommended";
 
-        const hasOldPrice = p.original_price && parseFloat(p.original_price) > parseFloat(p.price);
-        const oldPriceHtml = hasOldPrice ? `<span class="old-price">${p.original_price}€</span>` : '';
+            const hasOldPrice = p.original_price && parseFloat(p.original_price) > parseFloat(p.price);
+            const oldPriceHtml = hasOldPrice ? `<span class="old-price">${p.original_price}€</span>` : '';
 
-        const image = p.image || 'https://placehold.co/400x400/1e293b/white?text=AliExpress';
-        const title = p.title || p.nombre || 'Producto';
-        const price = p.price || p.precio_aproximado || '0';
-        const link = p.url || p.link || 'https://www.aliexpress.com';
-        const rating = p.rating || null;
-        const sales = p.sales || 0;
+            const image = p.image || 'https://placehold.co/400x400/1e293b/white?text=Producto';
+            const title = p.title || p.nombre || 'Producto';
+            const price = p.price || p.precio_aproximado || '0';
+            const link = p.url || p.link || '#';
+            const rating = p.rating || null;
+            const sales = p.sales || 0;
 
-        return `
-            <article class="card product-card" style="position: relative;">
-                ${p.tag ? `<div class="${badgeClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
-                <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
-                <div class="product-image-container">
-                    <img src="${image}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=AliExpress'">
-                </div>
-                <h3>${title}</h3>
-                <div class="price-container">
-                    ${oldPriceHtml}
-                    <span class="current-price">${price}€</span>
-                </div>
-                ${rating ? `<div style="font-size: 0.8rem; margin-top: 5px;">⭐ ${rating} | ${sales}+ vendidos</div>` : ''}
-                <a href="${link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" onclick="trackClick('${p.id || 'unknown'}', 'aliexpress')">
-                    Comprar Ahora →
-                </a>
-            </article>
-        `;
-    }).join('');
+            return `
+                <article class="card product-card" style="position: relative;">
+                    ${p.tag ? `<div class="${badgeClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${p.tag}</div>` : ''}
+                    <div class="urgency-badge">🔥 ¡OFERTA LIMITADA!</div>
+                    <div class="product-image-container">
+                        <img src="${image}" alt="${title}" loading="lazy" onerror="this.src='https://placehold.co/400x400/1e293b/white?text=Producto'">
+                    </div>
+                    <h3>${title}</h3>
+                    <div class="price-container">
+                        ${oldPriceHtml}
+                        <span class="current-price">${price}€</span>
+                    </div>
+                    ${rating ? `<div style="font-size: 0.8rem; margin-top: 5px;">⭐ ${rating} | ${sales}+ vendidos</div>` : ''}
+                    <a href="${link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored">
+                        Comprar Ahora →
+                    </a>
+                </article>
+            `;
+        }).join('');
+    }
 }
 
 /**
@@ -273,7 +266,7 @@ function handleNoResults(count, inputElement) {
             noResultsMsg.style.textAlign = 'center';
             noResultsMsg.style.padding = '40px';
             noResultsMsg.style.color = '#94a3b8';
-            noResultsMsg.textContent = 'No hay coincidencias en nuestro catálogo local. Buscando en AliExpress...';
+            noResultsMsg.textContent = 'No hay coincidencias en nuestro catálogo local. Buscando...';
             const containerParent = inputElement.closest('.container');
             if (containerParent) {
                 containerParent.appendChild(noResultsMsg);

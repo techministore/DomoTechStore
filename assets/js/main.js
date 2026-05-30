@@ -522,7 +522,7 @@ async function mostrarProductos(keyword, containerId) {
         if (products && products.length > 0) {
             const processed = processBestProducts(products);
             const filtered = processed.slice(0, CONFIG.FALLBACK_PRODUCTS_COUNT);
-            container.innerHTML = filtered.map(renderProductCard).join('');
+            container.innerHTML = filtered.map(renderFusedProductCard).join('');
             Logger.info(`Displayed ${filtered.length} products for: ${keyword}`);
         } else {
             container.innerHTML = renderEmptyState();
@@ -1731,12 +1731,19 @@ function renderFusedProductCard(product) {
             -${Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
         </span>` : '';
     
+    // Convertir product.price a número si es string
+    const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
+    const originalPrice = product.originalPrice ? (typeof product.originalPrice === 'string' ? parseFloat(product.originalPrice) : product.originalPrice) : price;
+    
+    // Historial de precios y contador de conversiones
+    const priceHistoryHtml = renderPriceHistory(product.id);
+    const conversionBadge = product.conversionCount > 0 
+        ? `<div style="font-size: 0.7rem; color: #ff9800; margin-top: 5px;">🔥 ${product.conversionCount} clicks</div>` 
+        : '';
+    
     return `
         <article class="card product-card" style="position:relative;transition:transform 0.3s ease, box-shadow 0.3s ease;">
-            <div style="position:absolute;top:10px;left:10px;z-index:10;padding:4px 10px;border-radius:4px;color:white;font-size:0.7rem;font-weight:bold;background:${product.storeColor};">
-                ${product.storeName}
-            </div>
-            
+            ${product.tag ? `<div class="badge" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${product.tag}</div>` : ''}
             <div class="product-image-container" style="overflow:hidden;">
                 <img src="${product.image}" alt="${product.title}" loading="lazy" 
                      onerror="this.src='${CONFIG.FALLBACK_PLACEHOLDER}'"
@@ -1747,16 +1754,18 @@ function renderFusedProductCard(product) {
             
             <div class="price-container" style="display:flex;align-items:center;gap:8px;margin:10px 0;">
                 ${oldPriceHtml}
-                <span class="current-price" style="font-size:1.3rem;font-weight:800;">${product.price.toFixed(2)}€</span>
+                <span class="current-price" style="font-size:1.3rem;font-weight:800;">${price.toFixed(2)}€</span>
                 ${discountHtml}
             </div>
             
-            ${product.rating ? `<div style="font-size:0.8rem;color:var(--muted-text);margin-bottom:10px;">⭐ ${product.rating.toFixed(1)} | ${product.sales || 0} vendidos</div>` : ''}
+            ${product.rating ? `<div style="font-size:0.8rem;color:var(--muted-text);margin-bottom:10px;">⭐ ${(typeof product.rating === 'string' ? parseFloat(product.rating) : product.rating).toFixed(1)} | ${product.sales || 0} vendidos</div>` : ''}
+            ${conversionBadge}
+            ${priceHistoryHtml}
             
-            <div class="product-actions" style="display:flex;flex-direction:column;gap:10px;">
+            <div class="product-actions" style="display:flex;flex-direction:column;gap:10px;margin-top: 15px;">
                 <a href="${product.link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored"
-                   onclick="trackClick('${product.id}', '${product.storeName.toLowerCase()}', null, ${JSON.stringify(product).replace(/"/g, '&quot;')})">
-                    Ver en ${product.storeName} →
+                   onclick="trackClick('${product.id}', 'banggood', null, ${JSON.stringify(product).replace(/"/g, '&quot;')})">
+                    Comprar Ahora →
                 </a>
             </div>
         </article>
