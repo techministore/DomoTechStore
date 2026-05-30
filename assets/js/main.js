@@ -1380,25 +1380,43 @@ function normalizeProduct(product, store) {
     const config = STORE_CONFIG[store.toUpperCase()];
     
     // Extraer campos comunes
-    const id = product.id || product.product_id || product.productId || `unknown_${Date.now()}`;
+    const productId = product.product_id || product.id || product.productId || null;
     const title = product.title || product.name || product.product_name || 'Producto sin nombre';
     const price = parseFloat(product.price || product.sale_price || product.salePrice || product.original_price || product.originalPrice || 0);
     const originalPrice = parseFloat(product.original_price || product.originalPrice || price);
     const image = product.image || product.image_url || product.imageUrl || product.thumbnail || product.product_image || CONFIG.FALLBACK_PLACEHOLDER;
     const rating = parseFloat(product.rating || product.starRating || product.evaluate_rate || 0);
     const sales = parseInt(product.sales || product.orderCount || product.soldCount || product.last_thirty_days_relevant_shelf_commission || 0);
+    
     let link = product.url || product.link || product.product_url || product.productUrl || product.product_detail_url || '#';
     
-    // Añadir ID de afiliado si está disponible
-    if (store === 'BANGGOOD' && BANGGOOD_CONFIG.AFFILIATE_ID && link) {
+    // Para Banggood: Construir URL usando product_id para evitar enlaces rotos
+    if (store === 'BANGGOOD' && productId) {
+        let baseUrl = `https://www.banggood.com/${productId}.html`;
+        
+        if (BANGGOOD_CONFIG.AFFILIATE_ID) {
+            baseUrl += `?affid=${BANGGOOD_CONFIG.AFFILIATE_ID}`;
+        }
+        
+        link = baseUrl;
+    } else if (store === 'BANGGOOD' && !productId && !product.url && !product.product_url) {
+        // Si no hay ID ni URL válida, descartar el producto
+        Logger.warn('[BANGGOOD] Descartando producto sin ID válido:', title);
+        return null;
+    }
+    
+    // Para AliExpress, mantener la lógica original
+    if (store === 'ALIEXPRESS' && BANGGOOD_CONFIG.AFFILIATE_ID && link) {
         link = link.includes('?') 
             ? `${link}&affid=${BANGGOOD_CONFIG.AFFILIATE_ID}`
             : `${link}?affid=${BANGGOOD_CONFIG.AFFILIATE_ID}`;
     }
     
+    const finalId = productId || `unknown_${Date.now()}`;
+    
     return {
-        id: `${config.prefix}${id}`,
-        originalId: id,
+        id: `${config.prefix}${finalId}`,
+        originalId: finalId,
         title,
         price,
         originalPrice,
@@ -1451,7 +1469,15 @@ async function searchBanggood(keyword) {
             Logger.info('[BANGGOOD] Éxito:', items.length, 'productos');
             
             if (items.length > 0) {
-                return items.map(p => normalizeProduct(p, 'BANGGOOD'));
+                const normalized = items
+                    .map(p => normalizeProduct(p, 'BANGGOOD'))
+                    .filter(p => p !== null);
+                
+                Logger.info('[BANGGOOD] Productos válidos después de filtrar:', normalized.length);
+                
+                if (normalized.length > 0) {
+                    return normalized;
+                }
             }
         }
 
@@ -1463,48 +1489,40 @@ async function searchBanggood(keyword) {
     Logger.warn('[BANGGOOD] Usando productos de fallback');
     const demoProducts = [
         {
-            id: 'bg_demo_1',
-            originalId: 'demo_1',
+            product_id: '1234567',
             title: `Enchufe Inteligente WiFi - ${keyword}`,
             price: Math.floor(Math.random() * 30) + 8,
-            originalPrice: Math.floor(Math.random() * 50) + 20,
+            original_price: Math.floor(Math.random() * 50) + 20,
             image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=400&q=80',
             rating: 4.0 + Math.random() * 0.8,
-            sales: Math.floor(Math.random() * 1000) + 100,
-            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword)
+            sales: Math.floor(Math.random() * 1000) + 100
         },
         {
-            id: 'bg_demo_2',
-            originalId: 'demo_2',
+            product_id: '2345678',
             title: `Bombilla LED RGB WiFi - ${keyword}`,
             price: Math.floor(Math.random() * 20) + 5,
-            originalPrice: Math.floor(Math.random() * 40) + 15,
+            original_price: Math.floor(Math.random() * 40) + 15,
             image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=400&q=80',
             rating: 4.3 + Math.random() * 0.6,
-            sales: Math.floor(Math.random() * 2000) + 200,
-            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword)
+            sales: Math.floor(Math.random() * 2000) + 200
         },
         {
-            id: 'bg_demo_3',
-            originalId: 'demo_3',
+            product_id: '3456789',
             title: `Cámara de Seguridad WiFi - ${keyword}`,
             price: Math.floor(Math.random() * 80) + 20,
-            originalPrice: Math.floor(Math.random() * 120) + 40,
+            original_price: Math.floor(Math.random() * 120) + 40,
             image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?auto=format&fit=crop&w=400&q=80',
             rating: 4.1 + Math.random() * 0.7,
-            sales: Math.floor(Math.random() * 800) + 80,
-            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword)
+            sales: Math.floor(Math.random() * 800) + 80
         },
         {
-            id: 'bg_demo_4',
-            originalId: 'demo_4',
+            product_id: '4567890',
             title: `Sensor de Movimiento Zigbee - ${keyword}`,
             price: Math.floor(Math.random() * 25) + 7,
-            originalPrice: Math.floor(Math.random() * 45) + 18,
+            original_price: Math.floor(Math.random() * 45) + 18,
             image: 'https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80',
             rating: 4.4 + Math.random() * 0.5,
-            sales: Math.floor(Math.random() * 600) + 60,
-            link: 'https://www.banggood.com/search/' + encodeURIComponent(keyword)
+            sales: Math.floor(Math.random() * 600) + 60
         }
     ];
     
