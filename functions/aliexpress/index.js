@@ -20,7 +20,6 @@ function logAliExpressRequest(method, params, endpoint) {
         }
     };
     
-    // Log en consola con formato claro
     console.log('═══════════════════════════════════════════════════');
     console.log('📤 REQUEST_TO_ALIEXPRESS');
     console.log('═══════════════════════════════════════════════════');
@@ -36,7 +35,6 @@ function logAliExpressRequest(method, params, endpoint) {
 
 /**
  * Cloudflare Pages Function: /aliexpress
- * Maneja búsquedas de productos y generación de enlaces s.click
  */
 export async function onRequest(context) {
     const { request, env } = context;
@@ -59,11 +57,10 @@ export async function onRequest(context) {
         try {
             const bizParams = {
                 tracking_id: env.ALI_TRACKING_ID || 'Domotech_2026',
-                promotion_link_type: '0', // s.click
+                promotion_link_type: '0',
                 source_values: `https://www.aliexpress.com/item/${productId}.html`
             };
 
-            // 📤 Registrar información enviada a AliExpress
             const endpoint = env.ALI_API_ENDPOINT || 'aliexpress.affiliate.link.generate';
             logAliExpressRequest('aliexpress.affiliate.link.generate', bizParams, endpoint);
 
@@ -89,7 +86,6 @@ export async function onRequest(context) {
     // 2. MODO BÚSQUEDA NORMAL / HOT
     console.log('[ALIEXPRESS] Modo: Búsqueda:', keyword, '(Hot:', hot, ')');
 
-    // Caché (opcional en Functions, pero recomendado)
     let cache;
     try { cache = caches.default; } catch (e) {}
     const cacheKey = new Request(url.toString());
@@ -104,7 +100,6 @@ export async function onRequest(context) {
         } catch (e) {}
     }
 
-    // Limpiar keyword
     const cleanKeyword = keyword
         .trim()
         .replace(/[^\w\s]/gi, '')
@@ -123,27 +118,22 @@ export async function onRequest(context) {
     const METHOD_NORMAL = 'aliexpress.affiliate.product.query';
 
     try {
-        // Intento principal
         const method = hot ? METHOD_HOT : METHOD_NORMAL;
-        
-        // 📤 Registrar información enviada a AliExpress
         const endpoint = env.ALI_API_ENDPOINT || 'https://api.aliexpress.com/';
+
         logAliExpressRequest(method, businessParams, endpoint);
 
         let apiResponse = await callAliExpressApi(method, businessParams, env);
 
-        // Fallback inteligente
         const hasError = !apiResponse || apiResponse.error_response || 
             !(apiResponse.aliexpress_affiliate_hotproduct_query_response || apiResponse.aliexpress_affiliate_product_query_response);
 
         if (hasError && hot) {
             console.log('[FALLBACK] Hot falló, intentando normal...');
-            // 📤 Registrar intento de fallback
             logAliExpressRequest(METHOD_NORMAL, businessParams, endpoint);
             apiResponse = await callAliExpressApi(METHOD_NORMAL, businessParams, env);
         }
 
-        // Procesar productos
         const responseData = apiResponse?.aliexpress_affiliate_product_query_response || 
                              apiResponse?.aliexpress_affiliate_hotproduct_query_response || 
                              apiResponse;

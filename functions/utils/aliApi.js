@@ -61,9 +61,6 @@ export async function callAliExpressApi(method, businessParams, env) {
     const sign = await signRequest(commonParams, APP_SECRET);
 
     // 3) Construir el body en el orden correcto (x-www-form-urlencoded)
-    //    1. commonParams (ordenados)
-    //    2. businessParams (SIN reordenar)
-    //    3. sign (al final)
     const bodyParts = [];
 
     // 1. commonParams ordenados
@@ -72,8 +69,7 @@ export async function callAliExpressApi(method, businessParams, env) {
         bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(commonParams[key])}`);
     }
 
-    // 2. businessParams SIN ordenar (en su orden original)
-    // Según la "Regla de Oro" de Portals: se añaden al body después de los comunes
+    // 2. businessParams SIN ordenar
     for (const key of Object.keys(businessParams)) {
         const value = typeof businessParams[key] === 'object' 
             ? JSON.stringify(businessParams[key]) 
@@ -85,6 +81,12 @@ export async function callAliExpressApi(method, businessParams, env) {
     bodyParts.push(`sign=${encodeURIComponent(sign)}`);
 
     const body = bodyParts.join('&');
+
+    // ⭐⭐⭐ AÑADIDO IMPORTANTE ⭐⭐⭐
+    // Construimos la URL completa para debug y soporte de AliExpress
+    const fullUrl = API_URL + "?" + body;
+    console.log("FULL_REQUEST_URL:", fullUrl);
+    // ⭐⭐⭐ FIN AÑADIDO ⭐⭐⭐
 
     // 4) Petición POST
     try {
