@@ -1,0 +1,12 @@
+# Variables de entorno para desarrollo local con wrangler
+# Copia este archivo a .dev.vars y completa las credenciales
+
+# AliExpress API Keys
+ALI_APP_KEY=tu_app_key_aqui
+ALI_APP_SECRET=tu_app_secret_aqui
+ALI_TRACKING_ID=tu_tracking_id_aqui
+
+# Banggood API Keys (tus credenciales)
+BANGGOOD_APP_KEY=aff6a1a99947bda
+BANGGOOD_APP_SECRET=tu_app_secret_completo_aqui
+BANGGOOD_AFFILIATE_ID=tu_affiliate_id_aqui

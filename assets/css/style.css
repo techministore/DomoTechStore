@@ -319,6 +319,34 @@ a { text-decoration: none; color: inherit; transition: var(--transition); }
     transform: scaleY(1.1);
 }
 
+/* Mejoras de UX */
+.product-card:hover {
+    transform: translateY(-8px) scale(1.02);
+}
+.product-card:hover .product-image-container img {
+    transform: scale(1.05);
+}
+
+/* Botones mejorados */
+.btn-aliexpress {
+    transition: all 0.2s ease;
+}
+.btn-aliexpress:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+}
+.btn-miravia {
+    transition: all 0.2s ease;
+}
+.btn-miravia:hover {
+    filter: brightness(0.95);
+}
+
+/* Scroll suave */
+html {
+    scroll-behavior: smooth;
+}
+
 /* RESPONSIVE */
 @media (max-width: 1024px) { 
     .grid-4 { grid-template-columns: repeat(2, 1fr); } 

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Características Avanzadas | DomoTechStore</title>
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <style>
+        /* Mejoras extra para la demo */
+        .demo-section {
+            margin-bottom: 60px;
+            border-top: 2px solid rgba(255,255,255,0.1);
+            padding-top: 40px;
+        }
+        .demo-section:first-child {
+            border-top: none;
+            padding-top: 0;
+        }
+        .filter-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+        }
+        .filter-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        .trending-badge {
+            display: inline-block;
+            background: linear-gradient(90deg, #ff9800, #ff5722);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+
+    <main>
+        <section class="section">
+            <div class="container">
+                <h1 class="section-title" style="text-align:left;">🚀 Características Avanzadas</h1>
+                
+                <!-- Sección 1: Búsqueda Fusionada -->
+                <div class="demo-section">
+                    <h2 class="section-title" style="text-align:left; margin-bottom:20px;">1. 🔍 Búsqueda Fusionada (AliExpress + Banggood)</h2>
+                    
+                    <div class="search-hero" style="margin-bottom:30px;">
+                        <input type="text" id="fusion-search" placeholder="Busca productos en ambas tiendas..." style="max-width:600px;">
+                        <button onclick="doFusedSearch()" class="btn-aliexpress" style="margin-top:10px; padding:12px 30px; border:none; cursor:pointer;">🔎 Buscar</button>
+                    </div>
+                    
+                    <div class="filter-controls">
+                        <button class="filter-btn active" onclick="setPrioridad('best-price')">🔥 Mejor Precio</button>
+                        <button class="filter-btn" onclick="setPrioridad('ali-first')">🇨🇳 AliExpress Primero</button>
+                        <button class="filter-btn" onclick="setPrioridad('bg-first')">🇨🇳 Banggood Primero</button>
+                    </div>
+                    
+                    <div id="fused-results" class="grid grid-4"></div>
+                </div>
+                
+                <!-- Sección 2: Ofertas Reales -->
+                <div class="demo-section">
+                    <h2 class="section-title" style="text-align:left; margin-bottom:20px;">2. ⚡ Ofertas Reales (Historial de Precios)</h2>
+                    <p style="color:var(--muted-text); margin-bottom:20px;">Productos con bajadas de precio detectadas automáticamente</p>
+                    <div id="real-deals" class="grid grid-4"></div>
+                </div>
+                
+                <!-- Sección 3: Productos en Tendencia -->
+                <div class="demo-section">
+                    <h2 class="section-title" style="text-align:left; margin-bottom:20px;">3. 📈 Productos en Tendencia</h2>
+                    <p style="color:var(--muted-text); margin-bottom:20px;">Productos con mayor crecimiento en clicks</p>
+                    <div id="trending-products"></div>
+                    <div style="margin-top:30px;">
+                        <h3 style="margin-bottom:15px;">🔥 Categorías en Tendencia</h3>
+                        <div id="trending-categories"></div>
+                    </div>
+                </div>
+                
+                <!-- Sección 4: Filtros Avanzados -->
+                <div class="demo-section">
+                    <h2 class="section-title" style="text-align:left; margin-bottom:20px;">4. 🔧 Filtros Avanzados</h2>
+                    <p style="color:var(--muted-text); margin-bottom:20px;">Prueba los filtros con productos de demostración</p>
+                    
+                    <div class="filter-controls">
+                        <div>
+                        <label style="display:block; font-weight:600; margin-bottom:8px;">Precio Máximo (€)</label>
+                        <input type="number" id="max-price" value="100" style="padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:transparent; color:white;">
+                        </div>
+                        <div>
+                        <label style="display:block; font-weight:600; margin-bottom:8px;">Rating Mínimo</label>
+                        <input type="range" id="min-rating" min="0" max="5" step="0.5" value="0" style="width:150px;">
+                        <span id="rating-value">0</span>
+                        </div>
+                        <div>
+                        <label style="display:block; font-weight:600; margin-bottom:8px;">Tiendas</label>
+                        <label style="display:flex; gap:8px; align-items:center;">
+                            <input type="checkbox" id="filter-ali" checked> AliExpress
+                        </label>
+                        <label style="display:flex; gap:8px; align-items:center;">
+                            <input type="checkbox" id="filter-bg" checked> Banggood
+                        </label>
+                        </div>
+                        <div>
+                        <label style="display:block; font-weight:600; margin-bottom:8px;">Ordenar Por</label>
+                        <select id="sort-by" style="padding:8px; border-radius:8px; background:var(--dark-card); color:white; border:1px solid rgba(255,255,255,0.2);">
+                            <option value="default">Por Defecto</option>
+                            <option value="price-asc">Precio (Menor → Mayor)</option>
+                            <option value="price-desc">Precio (Mayor → Menor)</option>
+                            <option value="rating">Rating</option>
+                            <option value="sales">Ventas</option>
+                        </select>
+                        </div>
+                        <div style="align-self:flex-end;">
+                            <button onclick="applyAdvancedFilters()" class="btn-aliexpress" style="border:none; cursor:pointer;">Aplicar Filtros</button>
+                        </div>
+                    </div>
+                    
+                    <div id="filtered-products" class="grid grid-4"></div>
+                </div>
+                
+            </div>
+        </section>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script src="/assets/js/main.js"></script>
+    <script>
+        let currentPrioridad = 'best-price';
+        let demoProducts = [];
+        
+        // Inicializar productos de demo
+        async function initDemo() {
+            // Cargar algunos productos de demo
+            demoProducts = await fusedSearch('smart home');
+            renderDemoProducts();
+            renderRealDeals();
+            renderTrending();
+        }
+        
+        // Búsqueda fusionada
+        async function doFusedSearch() {
+            const keyword = document.getElementById('fusion-search').value || 'smart home';
+            const container = document.getElementById('fused-results');
+            
+            container.innerHTML = renderAdvancedSkeleton(4);
+            
+            const products = await fusedSearch(keyword, { prioritize: currentPrioridad });
+            demoProducts = products;
+            
+            if (products.length > 0) {
+                container.innerHTML = products.map(renderFusedProductCard).join('');
+            } else {
+                container.innerHTML = '<p style="grid-column:1/-1; text-align:center; opacity:0.5; padding:40px;">No se encontraron productos</p>';
+            }
+        }
+        
+        function setPrioridad(prioridad) {
+            currentPrioridad = prioridad;
+            
+            // Actualizar botones
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            doFusedSearch();
+        }
+        
+        // Ofertas reales
+        function renderRealDeals() {
+            const container = document.getElementById('real-deals');
+            const deals = getRealDeals(5);
+            
+            if (deals.length === 0) {
+                container.innerHTML = '<p style="grid-column:1/-1; text-align:center; opacity:0.5; padding:40px;">Haz clic en algunos productos para generar historial de precios</p>';
+            } else {
+                container.innerHTML = deals.map(deal => `
+                    <article class="card product-card" style="position:relative;">
+                        <div class="trending-badge" style="position:absolute; top:10px; left:10px;">🔥 -${deal.discountPercent}% OFF</div>
+                        <div class="product-image-container">
+                            <img src="${deal.image}" alt="${deal.title}" style="object-fit:cover;">
+                        </div>
+                        <h3 style="font-size:0.95rem;">${deal.title}</h3>
+                        <div style="display:flex; gap:8px; align-items:center; margin:10px 0;">
+                            <span style="text-decoration:line-through; opacity:0.6;">${deal.firstPrice.toFixed(2)}€</span>
+                            <span style="font-size:1.3rem; font-weight:800; color:#22c55e;">${deal.currentPrice.toFixed(2)}€</span>
+                        </div>
+                        <p style="font-size:0.85rem; color:var(--muted-text);">Ahorro: ${deal.savings.toFixed(2)}€</p>
+                    </article>
+                `).join('');
+            }
+        }
+        
+        // Productos en tendencia
+        function renderTrending() {
+            const productsContainer = document.getElementById('trending-products');
+            const categoriesContainer = document.getElementById('trending-categories');
+            const trending = getTrendingProducts(24);
+            const categories = getTrendingCategories();
+            
+            if (trending.length === 0) {
+                productsContainer.innerHTML = '<p style="opacity:0.5; text-align:center;">Navega por la página para generar datos de tendencia</p>';
+            } else {
+                productsContainer.innerHTML = `
+                    <div class="grid grid-4">
+                        ${trending.slice(0, 8).map(t => `
+                            <article class="card" style="padding:20px; text-align:center;">
+                                <div class="trending-badge">📈 +${t.growthPercent}%</div>
+                                <h3 style="font-size:1rem; margin:10px 0;">Producto ID: ${t.id}</h3>
+                                <p style="color:var(--muted-text);">${t.count} clicks en las últimas 24h</p>
+                                ${t.previousCount > 0 ? `<p style="font-size:0.85rem; color:#666;">vs ${t.previousCount} clicks período anterior</p>` : ''}
+                            </article>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            if (categories.length > 0) {
+                categoriesContainer.innerHTML = `
+                    <div class="grid grid-5">
+                        ${categories.map(cat => `
+                            <div class="card" style="padding:15px; text-align:center;">
+                                <h3 style="font-size:0.95rem; margin-bottom:5px;">${cat[0]}</h3>
+                                <p style="color:var(--primary); font-weight:700; font-size:1.2rem;">${cat[1]} clicks</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+        
+        // Renderizar productos de demo
+        function renderDemoProducts() {
+            const container = document.getElementById('filtered-products');
+            container.innerHTML = demoProducts.slice(0, 8).map(renderFusedProductCard).join('');
+        }
+        
+        // Filtros avanzados
+        function applyAdvancedFilters() {
+            const maxPrice = parseFloat(document.getElementById('max-price').value) || 1000;
+            const minRating = parseFloat(document.getElementById('min-rating').value) || 0;
+            const filterAli = document.getElementById('filter-ali').checked;
+            const filterBg = document.getElementById('filter-bg').checked;
+            const sortBy = document.getElementById('sort-by').value;
+            
+            const filters = {
+                priceRange: [0, maxPrice],
+                stores: [],
+                minRating: minRating,
+                sortBy: sortBy
+            };
+            
+            if (filterAli) filters.stores.push('ALIEXPRESS');
+            if (filterBg) filters.stores.push('BANGGOOD');
+            
+            const filtered = applyFilters(demoProducts, filters);
+            const container = document.getElementById('filtered-products');
+            
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="grid-column:1/-1; text-align:center; opacity:0.5;">No hay productos que coincidan con los filtros</p>';
+            } else {
+                container.innerHTML = filtered.map(renderFusedProductCard).join('');
+            }
+        }
+        
+        // Actualizar valor del rating
+        document.getElementById('min-rating').addEventListener('input', e => {
+            document.getElementById('rating-value').textContent = e.target.value;
+        });
+        
+        // Inicializar la demo cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', initDemo);
+        
+        document.getElementById('fusion-search').addEventListener('keypress', e => {
+            if (e.key === 'Enter') doFusedSearch();
+        });
+    </script>
+</body>
+</html>

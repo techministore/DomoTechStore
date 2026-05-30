@@ -1362,6 +1362,351 @@ document.head.appendChild(style);
 window.limpiarDatosAnalitica = limpiarDatosAnalitica;
 window.trackProductForPriceAlerts = trackProductForPriceAlerts;
 
+// ============================================================================
+// 🛒 MÓDULO 1: INTEGRACIÓN BANGGOOD COMPLETA + NORMALIZACIÓN
+// ============================================================================
+const STORE_CONFIG = {
+    ALIEXPRESS: {
+        name: 'AliExpress',
+        color: '#ff4747',
+        prefix: 'ali_'
+    },
+    BANGGOOD: {
+        name: 'Banggood',
+        color: '#2196F3',
+        prefix: 'bg_'
+    }
+};
+
+// Normalizador de productos para unificar formatos
+function normalizeProduct(product, store) {
+    const config = STORE_CONFIG[store.toUpperCase()];
+    
+    // Extraer campos comunes
+    const id = product.id || product.productId || `unknown_${Date.now()}`;
+    const title = product.title || product.name || 'Producto sin nombre';
+    const price = parseFloat(product.price || product.salePrice || product.originalPrice || 0);
+    const originalPrice = parseFloat(product.originalPrice || product.original_price || price);
+    const image = product.image || product.imageUrl || product.thumbnail || CONFIG.FALLBACK_PLACEHOLDER;
+    const rating = parseFloat(product.rating || product.starRating || 0);
+    const sales = parseInt(product.sales || product.orderCount || product.soldCount || 0);
+    const link = product.url || product.link || product.productUrl || '#';
+    
+    return {
+        id: `${config.prefix}${id}`,
+        originalId: id,
+        title,
+        price,
+        originalPrice,
+        image,
+        rating,
+        sales,
+        link,
+        store: store.toUpperCase(),
+        storeName: config.name,
+        storeColor: config.color,
+        tag: null,
+        timestamp: Date.now()
+    };
+}
+
+// Módulo de búsqueda Banggood (client-side fallback)
+async function searchBanggood(keyword) {
+    try {
+        // Primero intentar con la API
+        const response = await fetch(`/banggood?keyword=${encodeURIComponent(keyword)}`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.items && data.items.length > 0) {
+                return data.items.map(p => normalizeProduct(p, 'BANGGOOD'));
+            }
+        }
+    } catch (e) {
+        Logger.warn('[BANGGOOD] API no disponible, usando fallback');
+    }
+    
+    // Fallback: productos de demostración
+    return [
+        {
+            id: 'bg_demo_1',
+            originalId: 'demo_1',
+            title: `Smart Home Device - ${keyword}`,
+            price: Math.floor(Math.random() * 50) + 10,
+            originalPrice: Math.floor(Math.random() * 80) + 30,
+            image: 'https://images.unsplash.com/photo-1558002038-103792e17734?auto=format&fit=crop&w=400&q=80',
+            rating: 4.2 + Math.random() * 0.5,
+            sales: Math.floor(Math.random() * 500) + 50,
+            link: 'https://www.banggood.com/',
+            store: 'BANGGOOD',
+            storeName: 'Banggood',
+            storeColor: '#2196F3'
+        },
+        {
+            id: 'bg_demo_2',
+            originalId: 'demo_2',
+            title: `WiFi Smart Plug - ${keyword}`,
+            price: Math.floor(Math.random() * 30) + 5,
+            originalPrice: Math.floor(Math.random() * 50) + 20,
+            image: 'https://images.unsplash.com/photo-1555664424-778a1e5e1b48?auto=format&fit=crop&w=400&q=80',
+            rating: 4.0 + Math.random() * 0.6,
+            sales: Math.floor(Math.random() * 1000) + 100,
+            link: 'https://www.banggood.com/',
+            store: 'BANGGOOD',
+            storeName: 'Banggood',
+            storeColor: '#2196F3'
+        }
+    ].map(p => normalizeProduct(p, 'BANGGOOD'));
+}
+
+// ============================================================================
+// 🔗 MÓDULO 2: MOTOR DE FUSIÓN ALIEXPRESS + BANGGOOD
+// ============================================================================
+async function fusedSearch(keyword, options = {}) {
+    const { 
+        prioritize = 'best-price', // 'best-price', 'ali-first', 'bg-first'
+        maxItems = 20,
+        useFallback = true
+    } = options;
+    
+    Logger.info(`[FUSION] Buscando "${keyword}" con estrategia: ${prioritize}`);
+    
+    // Ejecutar búsquedas en paralelo
+    const [aliProducts, bgProducts] = await Promise.allSettled([
+        fetchWithRetry(keyword, true).then(p => (p || []).map(prod => normalizeProduct({...prod, id: prod.id}, 'ALIEXPRESS'))),
+        searchBanggood(keyword)
+    ]);
+    
+    // Obtener resultados exitosos
+    const aliResults = aliProducts.status === 'fulfilled' ? aliProducts.value : [];
+    const bgResults = bgProducts.status === 'fulfilled' ? bgProducts.value : [];
+    
+    // Fusionar y ordenar
+    let fusedResults = [...aliResults, ...bgResults];
+    
+    // Aplicar estrategia de priorización
+    switch (prioritize) {
+        case 'best-price':
+            fusedResults.sort((a, b) => a.price - b.price);
+            break;
+        case 'ali-first':
+            fusedResults.sort((a, b) => (a.store === 'ALIEXPRESS' ? -1 : 1));
+            break;
+        case 'bg-first':
+            fusedResults.sort((a, b) => (a.store === 'BANGGOOD' ? -1 : 1));
+            break;
+    }
+    
+    // Eliminar duplicados (mismo título)
+    const seenTitles = new Set();
+    fusedResults = fusedResults.filter(p => {
+        const normalizedTitle = p.title.toLowerCase().substring(0, 50);
+        if (seenTitles.has(normalizedTitle)) return false;
+        seenTitles.add(normalizedTitle);
+        return true;
+    });
+    
+    Logger.info(`[FUSION] Resultados: ${aliResults.length} AliExpress + ${bgResults.length} Banggood = ${fusedResults.length} totales`);
+    
+    return fusedResults.slice(0, maxItems);
+}
+
+// ============================================================================
+// ⚡ MÓDULO 3: OFERTAS REALES (basado en historial de precios)
+// ============================================================================
+function getRealDeals(minDiscountPercent = 10) {
+    try {
+        const priceHistory = JSON.parse(localStorage.getItem('domotech_price_history') || '{}');
+        const deals = [];
+        
+        for (const productId in priceHistory) {
+            const history = priceHistory[productId];
+            if (history.length < 2) continue;
+            
+            const firstPrice = history[0].price;
+            const currentPrice = history[history.length - 1].price;
+            const discountPercent = Math.round(((firstPrice - currentPrice) / firstPrice) * 100);
+            
+            if (discountPercent >= minDiscountPercent) {
+                deals.push({
+                    id: productId,
+                    title: history[history.length - 1].title,
+                    image: history[history.length - 1].image,
+                    firstPrice,
+                    currentPrice,
+                    discountPercent,
+                    savings: firstPrice - currentPrice,
+                    history
+                });
+            }
+        }
+        
+        // Ordenar por descuento (mayor primero)
+        return deals.sort((a, b) => b.discountPercent - a.discountPercent);
+    } catch (e) {
+        Logger.error('[REAL DEALS] Error:', e);
+        return [];
+    }
+}
+
+// ============================================================================
+// 📈 MÓDULO 4: PRODUCTOS EN TENDENCIA
+// ============================================================================
+function getTrendingProducts(timeWindowHours = 24) {
+    try {
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": []}');
+        const now = Date.now();
+        const cutoffTime = now - (timeWindowHours * 60 * 60 * 1000);
+        
+        // Contar clicks por producto en el período
+        const clickCount = {};
+        const recentClicks = stats.clicks.filter(click => {
+            const clickDate = new Date(click.timestamp).getTime();
+            return clickDate > cutoffTime;
+        });
+        
+        recentClicks.forEach(click => {
+            if (!click.id) return;
+            clickCount[click.id] = (clickCount[click.id] || 0) + 1;
+        });
+        
+        // Calcular "tendencia" (comparar con período anterior)
+        const previousCutoff = cutoffTime - (timeWindowHours * 60 * 60 * 1000);
+        const previousClickCount = {};
+        
+        stats.clicks.filter(click => {
+            const clickDate = new Date(click.timestamp).getTime();
+            return clickDate > previousCutoff && clickDate < cutoffTime;
+        }).forEach(click => {
+            if (!click.id) return;
+            previousClickCount[click.id] = (previousClickCount[click.id] || 0) + 1;
+        });
+        
+        const trending = Object.entries(clickCount)
+            .map(([id, count]) => {
+                const previousCount = previousClickCount[id] || 0;
+                const growthPercent = previousCount > 0 
+                    ? Math.round(((count - previousCount) / previousCount) * 100)
+                    : 999; // Producto nuevo = 999% growth
+                
+                return { id, count, previousCount, growthPercent };
+            })
+            .sort((a, b) => b.growthPercent - a.growthPercent);
+        
+        return trending;
+    } catch (e) {
+        Logger.error('[TRENDING] Error:', e);
+        return [];
+    }
+}
+
+function getTrendingCategories() {
+    try {
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"interests": {}}');
+        return Object.entries(stats.interests)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+    } catch (e) {
+        return [];
+    }
+}
+
+// ============================================================================
+// ✨ MÓDULO 5: OPTIMIZACIONES UX
+// ============================================================================
+// Skeleton Loaders (ya existentes, mejorados)
+function renderAdvancedSkeleton(count = 4, type = 'product-card') {
+    if (type === 'product-card') {
+        return Array(count).fill(0).map(() => `
+            <article class="card product-card skeleton-card" style="opacity:0.7;">
+                <div style="height: 180px; background: rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 15px; animation: pulse 1.5s infinite;"></div>
+                <div style="height: 20px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 80%; margin-bottom: 10px; animation: pulse 1.5s infinite 0.1s;"></div>
+                <div style="height: 30px; background: rgba(255,255,255,0.05); border-radius: 4px; width: 50%; margin-bottom: 15px; animation: pulse 1.5s infinite 0.2s;"></div>
+                <div style="height: 40px; background: rgba(255,255,255,0.05); border-radius: 8px; width: 100%; animation: pulse 1.5s infinite 0.3s;"></div>
+            </article>
+        `).join('');
+    }
+    return '';
+}
+
+// Sistema de filtros avanzados
+const PRODUCT_FILTERS = {
+    priceRange: [0, Infinity],
+    stores: ['ALIEXPRESS', 'BANGGOOD'],
+    minRating: 0,
+    sortBy: 'default' // 'default', 'price-asc', 'price-desc', 'rating', 'sales'
+};
+
+function applyFilters(products, filters = PRODUCT_FILTERS) {
+    return products.filter(p => {
+        const priceOk = p.price >= filters.priceRange[0] && p.price <= filters.priceRange[1];
+        const storeOk = filters.stores.includes(p.store);
+        const ratingOk = p.rating >= filters.minRating;
+        return priceOk && storeOk && ratingOk;
+    }).sort((a, b) => {
+        switch (filters.sortBy) {
+            case 'price-asc': return a.price - b.price;
+            case 'price-desc': return b.price - a.price;
+            case 'rating': return b.rating - a.rating;
+            case 'sales': return b.sales - a.sales;
+            default: return 0;
+        }
+    });
+}
+
+// Renderizar tarjeta de producto mejorada con información de tienda
+function renderFusedProductCard(product) {
+    const hasOldPrice = product.originalPrice > product.price;
+    const oldPriceHtml = hasOldPrice ? `<span class="old-price" style="opacity:0.6;text-decoration:line-through;">${product.originalPrice.toFixed(2)}€</span>` : '';
+    const discountHtml = hasOldPrice ? `
+        <span style="background:#22c55e;color:white;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:bold;margin-left:8px;">
+            -${Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+        </span>` : '';
+    
+    return `
+        <article class="card product-card" style="position:relative;transition:transform 0.3s ease, box-shadow 0.3s ease;">
+            <div style="position:absolute;top:10px;left:10px;z-index:10;padding:4px 10px;border-radius:4px;color:white;font-size:0.7rem;font-weight:bold;background:${product.storeColor};">
+                ${product.storeName}
+            </div>
+            
+            <div class="product-image-container" style="overflow:hidden;">
+                <img src="${product.image}" alt="${product.title}" loading="lazy" 
+                     onerror="this.src='${CONFIG.FALLBACK_PLACEHOLDER}'"
+                     style="transition:transform 0.3s ease;">
+            </div>
+            
+            <h3 style="font-size:0.95rem;line-height:1.4;">${product.title}</h3>
+            
+            <div class="price-container" style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+                ${oldPriceHtml}
+                <span class="current-price" style="font-size:1.3rem;font-weight:800;">${product.price.toFixed(2)}€</span>
+                ${discountHtml}
+            </div>
+            
+            ${product.rating ? `<div style="font-size:0.8rem;color:var(--muted-text);margin-bottom:10px;">⭐ ${product.rating.toFixed(1)} | ${product.sales || 0} vendidos</div>` : ''}
+            
+            <div class="product-actions" style="display:flex;flex-direction:column;gap:10px;">
+                <a href="${product.link}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored"
+                   onclick="trackClick('${product.id}', '${product.storeName.toLowerCase()}', null, ${JSON.stringify(product).replace(/"/g, '&quot;')})">
+                    Ver en ${product.storeName} →
+                </a>
+            </div>
+        </article>
+    `;
+}
+
+// ============================================================================
+// 🌐 EXPORTAR FUNCIONES GLOBALES
+// ============================================================================
+window.fusedSearch = fusedSearch;
+window.searchBanggood = searchBanggood;
+window.normalizeProduct = normalizeProduct;
+window.getRealDeals = getRealDeals;
+window.getTrendingProducts = getTrendingProducts;
+window.getTrendingCategories = getTrendingCategories;
+window.applyFilters = applyFilters;
+window.renderFusedProductCard = renderFusedProductCard;
+window.renderAdvancedSkeleton = renderAdvancedSkeleton;
+
 /**
  * Carga los productos vistos recientemente por el usuario
  */

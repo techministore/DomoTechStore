@@ -8,7 +8,7 @@ export async function callBanggoodApi(keyword, env) {
     const APP_SECRET = env.BANGGOOD_APP_SECRET;
 
     if (!APP_KEY || !APP_SECRET) {
-        console.warn('[BANGGOOD] Credenciales no configuradas. Usando búsqueda por scraping fallback.');
+        console.warn('[BANGGOOD] Credenciales no configuradas. Usando fallback.');
         return { data: [], error: 'No credentials' };
     }
 
@@ -27,14 +27,20 @@ export async function callBanggoodApi(keyword, env) {
         
         console.log('[BANGGOOD API] Llamando a:', endpoint);
 
+        // Timeout con AbortController
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
         const response = await fetch(endpoint, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
                 'User-Agent': 'DomoTechStore/1.0'
             },
-            timeout: 8000
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             throw new Error(`Banggood API returned ${response.status}`);
@@ -42,14 +48,14 @@ export async function callBanggoodApi(keyword, env) {
 
         const data = await response.json();
         
-        console.log('[BANGGOOD API] Respuesta recibida:', data.data ? data.data.length : 0, 'items');
+        console.log('[BANGGOOD API] Respuesta recibida:', data.data ? data.data.length : data.items ? data.items.length : 0, 'items');
         
         return data || { data: [] };
 
     } catch (error) {
         console.error('[BANGGOOD API] Error:', error.message);
         
-        // Fallback: intentar búsqueda alternativa
+        // Fallback: búsqueda alternativa
         try {
             return await fallbackBanggoodSearch(keyword);
         } catch (fallbackErr) {
