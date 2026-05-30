@@ -364,7 +364,10 @@ function processBestProducts(products) {
     if (!products || products.length === 0) return [];
 
     try {
-        const sortedByQuality = [...products].sort((a, b) => {
+        // Primero ordenar por conversiones (nuevo ranking automático)
+        const sortedByConversions = sortByConversions(products);
+        
+        const sortedByQuality = [...sortedByConversions].sort((a, b) => {
             const scoreA = (parseFloat(a.rating) || 0) * 10 + (parseInt(a.sales) || 0) / 100;
             const scoreB = (parseFloat(b.rating) || 0) * 10 + (parseInt(b.sales) || 0) / 100;
             return scoreB - scoreA;
@@ -384,11 +387,15 @@ function processBestProducts(products) {
 
         const topSales = [...products].sort((a, b) => (parseInt(b.sales) || 0) - (parseInt(a.sales) || 0))[0];
 
-        return sortedByQuality.map(p => {
+        return sortedByConversions.map(p => {
+            const conversionCount = getConversionRank(p.id);
+            if (conversionCount > 0) p.conversionCount = conversionCount;
+            
             if (cheapest && p.id === cheapest.id) p.tag = "MEJOR PRECIO";
             else if (bestValue && p.id === bestValue.id) p.tag = "CALIDAD-PRECIO";
             else if (topSales && p.id === topSales.id) p.tag = "MÁS VENDIDO";
             else if ((parseFloat(p.rating) || 0) >= 4.8) p.tag = "RECOMENDADO";
+            else if (conversionCount > 2) p.tag = "🔥 POPULAR";
             return p;
         });
     } catch (error) {
@@ -440,6 +447,12 @@ function renderProductCard(product) {
     // Si el producto viene de un fallback de AliExpress (vacio o error), priorizamos Miravia visualmente
     const isAliFallback = !product.id || product.id === 'unknown';
 
+    // NUEVO: Historial de precios y contador de conversiones
+    const priceHistoryHtml = renderPriceHistory(product.id);
+    const conversionBadge = product.conversionCount > 0 
+        ? `<div style="font-size: 0.7rem; color: #ff9800; margin-top: 5px;">🔥 ${product.conversionCount} clicks</div>` 
+        : '';
+
     return `
         <article class="card product-card ${isAliFallback ? 'priority-miravia' : ''}" style="position: relative;">
             ${product.tag ? `<div class="${tagClass}" style="position: absolute; top: 10px; left: 10px; z-index: 10;">${product.tag}</div>` : ''}
@@ -452,11 +465,13 @@ function renderProductCard(product) {
                 <span class="current-price">${product.price || '0'}€</span>
             </div>
             ${product.rating ? `<div style="font-size: 0.8rem; margin-top: 5px; margin-bottom: 10px;">⭐ ${product.rating} | ${product.sales || 0}+ vendidos</div>` : ''}
+            ${conversionBadge}
+            ${priceHistoryHtml}
             
             <div class="product-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
                 <a href="${aliLink}" class="btn-aliexpress" target="_blank" rel="nofollow sponsored" 
                    style="order: ${isAliFallback ? 2 : 1}; opacity: ${isAliFallback ? 0.7 : 1}"
-                   onclick="trackClick('${product.id || 'unknown'}', 'aliexpress')">
+                   onclick="trackClick('${product.id || 'unknown'}', 'aliexpress', null, ${JSON.stringify(product).replace(/"/g, '&quot;')})">
                     ${isAliFallback ? 'Buscar en AliExpress' : 'Comprar en AliExpress →'}
                 </a>
                 <a href="${miraviaUrl}" class="btn-miravia" target="_blank" rel="nofollow sponsored"
@@ -808,7 +823,7 @@ async function checkApiStatus() {
  */
 function trackClick(productId, provider, contextInfo = null, productData = null) {
     try {
-        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": [], "total": 0, "interests": {}, "recently_viewed": []}');
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"clicks": [], "total": 0, "interests": {}, "recently_viewed": [], "conversions": {}}');
         
         // Registrar el click
         stats.clicks.push({
@@ -845,6 +860,16 @@ function trackClick(productId, provider, contextInfo = null, productData = null)
             // Limitar a los últimos 8 productos vistos
             if (stats.recently_viewed.length > 8) stats.recently_viewed.pop();
         }
+
+        // NUEVO: Registrar conversiones (clicks = conversión simplificado)
+        if (productId) {
+            stats.conversions[productId] = (stats.conversions[productId] || 0) + 1;
+        }
+
+        // NUEVO: Guardar historial de precios
+        if (productData && productId) {
+            trackPriceHistory(productId, productData);
+        }
         
         if (stats.clicks.length > 100) stats.clicks.shift();
         
@@ -852,6 +877,173 @@ function trackClick(productId, provider, contextInfo = null, productData = null)
         Logger.debug(`Click registrado: ${productId} | Recientemente visto actualizado`);
     } catch (e) {
         Logger.error("Error registrando click:", e);
+    }
+}
+
+/**
+ * NUEVO: Historial de precios por producto
+ */
+function trackPriceHistory(productId, productData) {
+    try {
+        const priceHistory = JSON.parse(localStorage.getItem('domotech_price_history') || '{}');
+        const currentPrice = parseFloat(productData.price);
+
+        if (!priceHistory[productId]) {
+            priceHistory[productId] = [];
+        }
+
+        // Solo añadir si el precio es diferente o han pasado más de 1 hora
+        const lastEntry = priceHistory[productId][priceHistory[productId].length - 1];
+        const now = Date.now();
+        const shouldAdd = !lastEntry || 
+            Math.abs(lastEntry.price - currentPrice) > 0.01 || 
+            (now - lastEntry.timestamp) > 3600000; // 1 hora
+
+        if (shouldAdd) {
+            priceHistory[productId].push({
+                price: currentPrice,
+                timestamp: now,
+                title: productData.title,
+                image: productData.image
+            });
+
+            // Limitar historial a 30 entradas
+            if (priceHistory[productId].length > 30) {
+                priceHistory[productId].shift();
+            }
+
+            localStorage.setItem('domotech_price_history', JSON.stringify(priceHistory));
+            Logger.debug(`Precio registrado para ${productId}: ${currentPrice}€`);
+        }
+    } catch (e) {
+        Logger.error("Error guardando historial de precios:", e);
+    }
+}
+
+/**
+ * NUEVO: Obtener el ranking de productos por conversiones
+ */
+function getConversionRank(productId) {
+    try {
+        const stats = JSON.parse(localStorage.getItem('domotech_stats') || '{"conversions": {}}');
+        return stats.conversions[productId] || 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
+/**
+ * NUEVO: Ordenar productos por conversiones (ranking automático)
+ */
+function sortByConversions(products) {
+    return [...products].sort((a, b) => {
+        const rankA = getConversionRank(a.id);
+        const rankB = getConversionRank(b.id);
+        return rankB - rankA; // Mayor conversión primero
+    });
+}
+
+/**
+ * NUEVO: Encontrar productos similares (estilo "AI" - similitud textual)
+ */
+function findSimilarProducts(targetProduct, allProducts, limit = 4) {
+    if (!targetProduct || !allProducts || allProducts.length === 0) return [];
+
+    const targetWords = tokenize(targetProduct.title || '');
+    const targetCat = targetProduct.categoria || '';
+
+    const scored = allProducts
+        .filter(p => p.id !== targetProduct.id)
+        .map(p => {
+            const productWords = tokenize(p.title || '');
+            const wordOverlap = targetWords.filter(w => productWords.includes(w)).length;
+            const catMatch = (p.categoria || '') === targetCat ? 5 : 0;
+            const score = wordOverlap + catMatch;
+            return { product: p, score };
+        })
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+
+    return scored.map(item => item.product);
+}
+
+function tokenize(text) {
+    return text
+        .toLowerCase()
+        .replace(/[^a-záéíóúñ0-9\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length > 2);
+}
+
+/**
+ * NUEVO: Renderizar historial de precios (gráfica simple con CSS)
+ */
+function renderPriceHistory(productId) {
+    try {
+        const history = JSON.parse(localStorage.getItem('domotech_price_history') || '{}')[productId];
+        if (!history || history.length < 2) return '';
+
+        const prices = history.map(h => h.price);
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        const range = max - min || 1;
+
+        const bars = history.map((h, i) => {
+            const height = ((h.price - min) / range) * 80 + 20; // 20-100px
+            const isLast = i === history.length - 1;
+            return `
+                <div class="price-bar ${isLast ? 'current' : ''}" style="height: ${height}%;" title="${new Date(h.timestamp).toLocaleDateString()}: ${h.price}€"></div>
+            `;
+        }).join('');
+
+        return `
+            <div class="price-history" style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                <div style="font-size: 0.7rem; color: var(--muted-text); margin-bottom: 5px;">📊 Historial de precios</div>
+                <div class="price-chart" style="display: flex; gap: 3px; align-items: flex-end; height: 60px;">
+                    ${bars}
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; margin-top: 3px;">
+                    <span>⬇️ ${min.toFixed(2)}€</span>
+                    <span>⬆️ ${max.toFixed(2)}€</span>
+                </div>
+            </div>
+        `;
+    } catch (e) {
+        Logger.error("Error renderizando historial de precios:", e);
+        return '';
+    }
+}
+
+/**
+ * NUEVO: Obtener y renderizar productos similares
+ */
+async function renderSimilarProducts(targetProduct, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    try {
+        // Primero intentamos usar productos ya cargados, si no, buscamos
+        let productsToSearch = [];
+        
+        // Intentamos obtener productos de la API con el mismo keyword
+        const keyword = (targetProduct.categoria || targetProduct.title || 'smart home').replace(/-/g, ' ');
+        const apiProducts = await fetchWithRetry(keyword, true);
+        
+        if (apiProducts && apiProducts.length > 0) {
+            productsToSearch = apiProducts;
+        }
+
+        const similar = findSimilarProducts(targetProduct, productsToSearch, 3);
+
+        if (similar.length > 0) {
+            container.parentElement.style.display = 'block';
+            container.innerHTML = similar.map(p => renderProductCard(p)).join('');
+        } else {
+            container.parentElement.style.display = 'none';
+        }
+    } catch (e) {
+        Logger.error("Error renderizando productos similares:", e);
     }
 }
 
