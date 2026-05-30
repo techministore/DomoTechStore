@@ -1,0 +1,71 @@
+// ============================================================================
+// 🔗 MÓDULO 2: MOTOR DE FUSIÓN ALIEXPRESS + BANGGOOD
+// ============================================================================
+async function fusedSearch(keyword, options = {}) {
+    const { 
+        prioritize = 'bg-first', // 'best-price', 'ali-first', 'bg-first' (ahora bg-first por defecto)
+        maxItems = 20,
+        useFallback = true
+    } = options;
+    
+    Logger.info(`[FUSION] Buscando "${keyword}" con estrategia: ${prioritize}`);
+    
+    // Preparar búsquedas según tiendas activas
+    const searchPromises = [];
+    
+    if (STORE_SETTINGS.ALIEXPRESS_ENABLED) {
+        searchPromises.push(
+            fetchWithRetry(keyword, true).then(p => (p || []).map(prod => normalizeProduct({...prod, id: prod.id}, 'ALIEXPRESS')))
+        );
+    }
+    
+    if (STORE_SETTINGS.BANGGOOD_ENABLED) {
+        searchPromises.push(searchBanggood(keyword));
+    }
+    
+    // Ejecutar búsquedas
+    const results = await Promise.allSettled(searchPromises);
+    
+    // Obtener resultados exitosos
+    let allResults = [];
+    let aliResults = [];
+    let bgResults = [];
+    
+    if (STORE_SETTINGS.ALIEXPRESS_ENABLED && results[0]?.status === 'fulfilled') {
+        aliResults = results[0].value;
+        allResults = [...allResults, ...aliResults];
+    }
+    if (STORE_SETTINGS.BANGGOOD_ENABLED && results[STORE_SETTINGS.ALIEXPRESS_ENABLED ? 1 : 0]?.status === 'fulfilled') {
+        bgResults = results[STORE_SETTINGS.ALIEXPRESS_ENABLED ? 1 : 0].value;
+        allResults = [...allResults, ...bgResults];
+    }
+    
+    // Ordenar resultados
+    let fusedResults = allResults;
+    // Aplicar estrategia de priorización
+    switch (prioritize) {
+        case 'best-price':
+            fusedResults.sort((a, b) => a.price - b.price);
+            break;
+        case 'ali-first':
+            fusedResults.sort((a, b) => (a.store === 'ALIEXPRESS' ? -1 : 1));
+            break;
+        case 'bg-first':
+        default:
+            fusedResults.sort((a, b) => (a.store === 'BANGGOOD' ? -1 : 1));
+            break;
+    }
+    
+    // Eliminar duplicados (mismo título)
+    const seenTitles = new Set();
+    fusedResults = fusedResults.filter(p => {
+        const normalizedTitle = p.title.toLowerCase().substring(0, 50);
+        if (seenTitles.has(normalizedTitle)) return false;
+        seenTitles.add(normalizedTitle);
+        return true;
+    });
+    
+    Logger.info(`[FUSION] Resultados: ${allResults.length} productos totales`);
+    
+    return fusedResults.slice(0, maxItems);
+}

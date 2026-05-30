@@ -514,9 +514,9 @@ async function mostrarProductos(keyword, containerId) {
     container.innerHTML = renderLoadingSkeleton(4);
 
     try {
-        // Use request manager to queue the request
+        // Use fused search (default: Banggood only)
         const products = await requestManager.execute(async () => {
-            return await fetchWithRetry(keyword, true);
+            return await fusedSearch(keyword);
         }, 1); // Priority 1
 
         if (products && products.length > 0) {
@@ -1365,6 +1365,13 @@ window.trackProductForPriceAlerts = trackProductForPriceAlerts;
 // ============================================================================
 // 🛒 MÓDULO 1: INTEGRACIÓN BANGGOOD COMPLETA + NORMALIZACIÓN (100% FRONTEND)
 // ============================================================================
+
+// ⚙️ CONFIGURACIÓN PRINCIPAL
+const STORE_SETTINGS = {
+    ALIEXPRESS_ENABLED: false, // TEMPORALMENTE DESACTIVADO, pon true para activar
+    BANGGOOD_ENABLED: true
+};
+
 const STORE_CONFIG = {
     ALIEXPRESS: {
         name: 'AliExpress',
@@ -1509,26 +1516,41 @@ async function searchBanggood(keyword) {
 // ============================================================================
 async function fusedSearch(keyword, options = {}) {
     const { 
-        prioritize = 'best-price', // 'best-price', 'ali-first', 'bg-first'
+        prioritize = 'bg-first', // 'best-price', 'ali-first', 'bg-first' (ahora bg-first por defecto)
         maxItems = 20,
         useFallback = true
     } = options;
     
     Logger.info(`[FUSION] Buscando "${keyword}" con estrategia: ${prioritize}`);
     
-    // Ejecutar búsquedas en paralelo
-    const [aliProducts, bgProducts] = await Promise.allSettled([
-        fetchWithRetry(keyword, true).then(p => (p || []).map(prod => normalizeProduct({...prod, id: prod.id}, 'ALIEXPRESS'))),
-        searchBanggood(keyword)
-    ]);
+    // Preparar búsquedas según tiendas activas
+    const searchPromises = [];
+    
+    if (STORE_SETTINGS.ALIEXPRESS_ENABLED) {
+        searchPromises.push(
+            fetchWithRetry(keyword, true).then(p => (p || []).map(prod => normalizeProduct({...prod, id: prod.id}, 'ALIEXPRESS')))
+        );
+    }
+    
+    if (STORE_SETTINGS.BANGGOOD_ENABLED) {
+        searchPromises.push(searchBanggood(keyword));
+    }
+    
+    // Ejecutar búsquedas
+    const results = await Promise.allSettled(searchPromises);
     
     // Obtener resultados exitosos
-    const aliResults = aliProducts.status === 'fulfilled' ? aliProducts.value : [];
-    const bgResults = bgProducts.status === 'fulfilled' ? bgProducts.value : [];
+    let allResults = [];
     
-    // Fusionar y ordenar
-    let fusedResults = [...aliResults, ...bgResults];
+    if (STORE_SETTINGS.ALIEXPRESS_ENABLED && results[0]?.status === 'fulfilled') {
+        allResults = [...allResults, ...results[0].value];
+    }
+    if (STORE_SETTINGS.BANGGOOD_ENABLED && results[STORE_SETTINGS.ALIEXPRESS_ENABLED ? 1 : 0]?.status === 'fulfilled') {
+        allResults = [...allResults, ...results[STORE_SETTINGS.ALIEXPRESS_ENABLED ? 1 : 0].value];
+    }
     
+    // Ordenar resultados
+    let fusedResults = allResults;
     // Aplicar estrategia de priorización
     switch (prioritize) {
         case 'best-price':
@@ -1538,6 +1560,7 @@ async function fusedSearch(keyword, options = {}) {
             fusedResults.sort((a, b) => (a.store === 'ALIEXPRESS' ? -1 : 1));
             break;
         case 'bg-first':
+        default:
             fusedResults.sort((a, b) => (a.store === 'BANGGOOD' ? -1 : 1));
             break;
     }
@@ -1551,7 +1574,7 @@ async function fusedSearch(keyword, options = {}) {
         return true;
     });
     
-    Logger.info(`[FUSION] Resultados: ${aliResults.length} AliExpress + ${bgResults.length} Banggood = ${fusedResults.length} totales`);
+    Logger.info(`[FUSION] Resultados: ${allResults.length} productos totales`);
     
     return fusedResults.slice(0, maxItems);
 }
