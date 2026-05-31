@@ -1,190 +1,8 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// banggood/categories/index.js
-async function onRequest() {
-  try {
-    const categories = [
-      {
-        id: 1,
-        name: "Iluminaci\xF3n Inteligente",
-        nameEn: "Smart Lighting",
-        slug: "lighting",
-        icon: "\u{1F4A1}"
-      },
-      {
-        id: 2,
-        name: "Seguridad y Vigilancia",
-        nameEn: "Security & Surveillance",
-        slug: "security",
-        icon: "\u{1F4F7}"
-      },
-      {
-        id: 3,
-        name: "Enchufes y Energ\xEDa",
-        nameEn: "Plugs & Energy",
-        slug: "plugs",
-        icon: "\u{1F50C}"
-      },
-      {
-        id: 4,
-        name: "C\xE1maras WiFi",
-        nameEn: "WiFi Cameras",
-        slug: "cameras",
-        icon: "\u{1F3A5}"
-      },
-      {
-        id: 5,
-        name: "Sensores y Automatizaci\xF3n",
-        nameEn: "Sensors & Automation",
-        slug: "sensors",
-        icon: "\u{1F6E0}\uFE0F"
-      },
-      {
-        id: 6,
-        name: "Gaming y Setup",
-        nameEn: "Gaming & Setup",
-        slug: "gaming",
-        icon: "\u{1F3AE}"
-      },
-      {
-        id: 7,
-        name: "Limpieza Inteligente",
-        nameEn: "Smart Cleaning",
-        slug: "cleaning",
-        icon: "\u{1F9F9}"
-      },
-      {
-        id: 8,
-        name: "Cocina Inteligente",
-        nameEn: "Smart Kitchen",
-        slug: "kitchen",
-        icon: "\u{1F373}"
-      },
-      {
-        id: 9,
-        name: "Climatizaci\xF3n Inteligente",
-        nameEn: "Smart Climate",
-        slug: "climate",
-        icon: "\u2744\uFE0F"
-      },
-      {
-        id: 10,
-        name: "Electr\xF3nica y Gadgets",
-        nameEn: "Electronics & Gadgets",
-        slug: "electronics",
-        icon: "\u{1F4F1}"
-      }
-    ];
-    return new Response(JSON.stringify({ code: 0, data: { categories } }), {
-      headers: { "Content-Type": "application/json" }
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-}
-__name(onRequest, "onRequest");
-
-// banggood/details/index.js
-async function onRequest2(context) {
-  try {
-    const { request, env } = context;
-    const url = new URL(request.url);
-    const productId = url.searchParams.get("productId") || url.searchParams.get("id") || "";
-    if (!productId) {
-      return new Response(JSON.stringify({ error: "productId required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-    const APP_KEY = env.BANGGOOD_APP_KEY;
-    const APP_SECRET = env.BANGGOOD_APP_SECRET;
-    const params = {
-      api: "product.get",
-      app_key: APP_KEY,
-      id: productId,
-      timestamp: Math.floor(Date.now() / 1e3)
-    };
-    const sortedKeys = Object.keys(params).sort();
-    let signString = "";
-    sortedKeys.forEach((key) => {
-      signString += key + params[key];
-    });
-    const encoder = new TextEncoder();
-    const data = encoder.encode(APP_SECRET + signString + APP_SECRET);
-    const hashBuffer = await crypto.subtle.digest("MD5", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const sign = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-    const query = new URLSearchParams({
-      ...params,
-      sign
-    });
-    const apiUrl = `https://api.banggood.com/api2/request.api?${query.toString()}`;
-    const response = await fetch(apiUrl);
-    const json = await response.json();
-    return new Response(JSON.stringify(json), {
-      headers: { "Content-Type": "application/json" }
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-}
-__name(onRequest2, "onRequest");
-
-// banggood/offers/index.js
-async function onRequest3(context) {
-  try {
-    const { request, env } = context;
-    const url = new URL(request.url);
-    const page = url.searchParams.get("page") || 1;
-    const pageSize = url.searchParams.get("pageSize") || 20;
-    const APP_KEY = env.BANGGOOD_APP_KEY;
-    const APP_SECRET = env.BANGGOOD_APP_SECRET;
-    const params = {
-      api: "product.search",
-      app_key: APP_KEY,
-      keywords: "discount",
-      page,
-      page_size: pageSize,
-      timestamp: Math.floor(Date.now() / 1e3)
-    };
-    const sortedKeys = Object.keys(params).sort();
-    let signString = "";
-    sortedKeys.forEach((key) => {
-      signString += key + params[key];
-    });
-    const encoder = new TextEncoder();
-    const data = encoder.encode(APP_SECRET + signString + APP_SECRET);
-    const hashBuffer = await crypto.subtle.digest("MD5", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const sign = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-    const query = new URLSearchParams({
-      ...params,
-      sign
-    });
-    const apiUrl = `https://api.banggood.com/api2/request.api?${query.toString()}`;
-    const response = await fetch(apiUrl);
-    const json = await response.json();
-    return new Response(JSON.stringify(json), {
-      headers: { "Content-Type": "application/json" }
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-}
-__name(onRequest3, "onRequest");
-
-// banggood/search/index.js
-async function onRequest4(context) {
+// banggood/index.js
+async function onRequest(context) {
   try {
     console.log("=== WORKER STARTING ===");
     const { request, env } = context;
@@ -199,12 +17,11 @@ async function onRequest4(context) {
     console.log("- APP_SECRET exists:", !!APP_SECRET);
     console.log("- Keyword:", keyword);
     const params = {
-      api: "product.search",
       app_key: APP_KEY,
       keywords: keyword,
       page,
       page_size: pageSize,
-      timestamp: Math.floor(Date.now() / 1e3)
+      language: "en"
     };
     const sortedKeys = Object.keys(params).sort();
     let signString = "";
@@ -222,11 +39,24 @@ async function onRequest4(context) {
       ...params,
       sign
     });
-    const apiUrl = `https://api.banggood.com/api2/request.api?${query.toString()}`;
+    const apiUrl = `https://api.banggood.com/api/search?${query.toString()}`;
     console.log("Calling Banggood API:", apiUrl.replace(APP_SECRET, "***"));
     const response = await fetch(apiUrl);
-    const json = await response.json();
-    console.log("Banggood response:", json);
+    console.log("Banggood response status:", response.status);
+    console.log("Banggood response headers:", response.headers);
+    const responseText = await response.text();
+    console.log("Banggood response text:", responseText);
+    let json;
+    try {
+      json = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Failed to parse JSON from Banggood:", e);
+      return new Response(JSON.stringify({ error: "Invalid JSON from Banggood", raw: responseText }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+    console.log("Banggood response JSON:", json);
     return new Response(JSON.stringify(json), {
       headers: { "Content-Type": "application/json" }
     });
@@ -239,90 +69,16 @@ async function onRequest4(context) {
     });
   }
 }
-__name(onRequest4, "onRequest");
-
-// banggood/index.js
-async function onRequest5(context) {
-  try {
-    const { request, env } = context;
-    const url = new URL(request.url);
-    const keyword = url.searchParams.get("q") || "";
-    const page = url.searchParams.get("page") || 1;
-    const pageSize = url.searchParams.get("pageSize") || 20;
-    const APP_KEY = env.BANGGOOD_APP_KEY;
-    const APP_SECRET = env.BANGGOOD_APP_SECRET;
-    const params = {
-      app_key: APP_KEY,
-      keywords: keyword,
-      page,
-      page_size: pageSize,
-      language: "en"
-    };
-    const sortedKeys = Object.keys(params).sort();
-    let signString = "";
-    sortedKeys.forEach((key) => {
-      signString += key + params[key];
-    });
-    const encoder = new TextEncoder();
-    const data = encoder.encode(APP_SECRET + signString + APP_SECRET);
-    const hashBuffer = await crypto.subtle.digest("MD5", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const sign = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-    const query = new URLSearchParams({
-      ...params,
-      sign
-    });
-    const apiUrl = `https://api.banggood.com/api/search?${query.toString()}`;
-    const response = await fetch(apiUrl);
-    const json = await response.json();
-    return new Response(JSON.stringify(json), {
-      headers: { "Content-Type": "application/json" }
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-}
-__name(onRequest5, "onRequest");
+__name(onRequest, "onRequest");
 
 // ../.wrangler/tmp/pages-mcgaK1/functionsRoutes-0.3412177809732304.mjs
 var routes = [
-  {
-    routePath: "/banggood/categories",
-    mountPath: "/banggood/categories",
-    method: "",
-    middlewares: [],
-    modules: [onRequest]
-  },
-  {
-    routePath: "/banggood/details",
-    mountPath: "/banggood/details",
-    method: "",
-    middlewares: [],
-    modules: [onRequest2]
-  },
-  {
-    routePath: "/banggood/offers",
-    mountPath: "/banggood/offers",
-    method: "",
-    middlewares: [],
-    modules: [onRequest3]
-  },
-  {
-    routePath: "/banggood/search",
-    mountPath: "/banggood/search",
-    method: "",
-    middlewares: [],
-    modules: [onRequest4]
-  },
   {
     routePath: "/banggood",
     mountPath: "/banggood",
     method: "",
     middlewares: [],
-    modules: [onRequest5]
+    modules: [onRequest]
   }
 ];
 
@@ -813,7 +569,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-7feJNW/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-sgUcco/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -845,7 +601,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-7feJNW/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-sgUcco/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

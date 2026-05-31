@@ -1,5 +1,6 @@
 export async function onRequest(context) {
     try {
+        console.log("=== WORKER STARTING ===");
         const { request, env } = context;
         const url = new URL(request.url);
 
@@ -9,6 +10,11 @@ export async function onRequest(context) {
 
         const APP_KEY = env.BANGGOOD_APP_KEY;
         const APP_SECRET = env.BANGGOOD_APP_SECRET;
+
+        console.log("KEYS CHECK:");
+        console.log("- APP_KEY exists:", !!APP_KEY);
+        console.log("- APP_SECRET exists:", !!APP_SECRET);
+        console.log("- Keyword:", keyword);
 
         const params = {
             app_key: APP_KEY,
@@ -25,6 +31,8 @@ export async function onRequest(context) {
             signString += key + params[key];
         });
 
+        console.log("Sign string:", signString);
+
         // Firmar con MD5 usando crypto.subtle
         const encoder = new TextEncoder();
         const data = encoder.encode(APP_SECRET + signString + APP_SECRET);
@@ -33,6 +41,8 @@ export async function onRequest(context) {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const sign = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
+        console.log("Generated sign:", sign);
+
         const query = new URLSearchParams({
             ...params,
             sign
@@ -40,15 +50,35 @@ export async function onRequest(context) {
 
         // ENDPOINT CORRECTO
         const apiUrl = `https://api.banggood.com/api/search?${query.toString()}`;
+        console.log("Calling Banggood API:", apiUrl.replace(APP_SECRET, "***"));
 
         const response = await fetch(apiUrl);
-        const json = await response.json();
+        console.log("Banggood response status:", response.status);
+        console.log("Banggood response headers:", response.headers);
+
+        const responseText = await response.text();
+        console.log("Banggood response text:", responseText);
+
+        let json;
+        try {
+            json = JSON.parse(responseText);
+        } catch (e) {
+            console.error("Failed to parse JSON from Banggood:", e);
+            return new Response(JSON.stringify({ error: "Invalid JSON from Banggood", raw: responseText }), {
+                status: 500,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+
+        console.log("Banggood response JSON:", json);
 
         return new Response(JSON.stringify(json), {
             headers: { "Content-Type": "application/json" }
         });
 
     } catch (err) {
+        console.error("WORKER ERROR:", err);
+        console.error("Error stack:", err.stack);
         return new Response(JSON.stringify({ error: err.message }), {
             status: 500,
             headers: { "Content-Type": "application/json" }
