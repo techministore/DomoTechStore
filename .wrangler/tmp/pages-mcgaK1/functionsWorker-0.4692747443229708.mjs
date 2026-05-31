@@ -244,7 +244,6 @@ __name(onRequest4, "onRequest");
 // banggood/index.js
 async function onRequest5(context) {
   try {
-    console.log("=== WORKER STARTING ===");
     const { request, env } = context;
     const url = new URL(request.url);
     const keyword = url.searchParams.get("q") || "";
@@ -252,45 +251,34 @@ async function onRequest5(context) {
     const pageSize = url.searchParams.get("pageSize") || 20;
     const APP_KEY = env.BANGGOOD_APP_KEY;
     const APP_SECRET = env.BANGGOOD_APP_SECRET;
-    console.log("KEYS CHECK:");
-    console.log("- APP_KEY exists:", !!APP_KEY);
-    console.log("- APP_SECRET exists:", !!APP_SECRET);
-    console.log("- Keyword:", keyword);
     const params = {
-      api: "product.search",
       app_key: APP_KEY,
       keywords: keyword,
       page,
       page_size: pageSize,
-      timestamp: Math.floor(Date.now() / 1e3)
+      language: "en"
     };
     const sortedKeys = Object.keys(params).sort();
     let signString = "";
     sortedKeys.forEach((key) => {
       signString += key + params[key];
     });
-    console.log("Sign string:", signString);
     const encoder = new TextEncoder();
     const data = encoder.encode(APP_SECRET + signString + APP_SECRET);
     const hashBuffer = await crypto.subtle.digest("MD5", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const sign = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-    console.log("Generated sign:", sign);
     const query = new URLSearchParams({
       ...params,
       sign
     });
-    const apiUrl = `https://api.banggood.com/api2/request.api?${query.toString()}`;
-    console.log("Calling Banggood API:", apiUrl.replace(APP_SECRET, "***"));
+    const apiUrl = `https://api.banggood.com/api/search?${query.toString()}`;
     const response = await fetch(apiUrl);
     const json = await response.json();
-    console.log("Banggood response:", json);
     return new Response(JSON.stringify(json), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
-    console.error("WORKER ERROR:", err);
-    console.error("Error stack:", err.stack);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
@@ -825,7 +813,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-xdZNQq/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-7feJNW/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -857,7 +845,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-xdZNQq/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-7feJNW/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
