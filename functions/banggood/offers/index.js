@@ -1,5 +1,3 @@
-import { fetchBanggoodAPI } from "../utils.js";
-
 export async function onRequest(context) {
     try {
         const { request, env } = context;
@@ -19,9 +17,32 @@ export async function onRequest(context) {
             timestamp: Math.floor(Date.now() / 1000)
         };
 
-        const data = await fetchBanggoodAPI(params, APP_KEY, APP_SECRET);
+        // Ordenar parámetros
+        const sortedKeys = Object.keys(params).sort();
+        let signString = "";
+        sortedKeys.forEach(key => {
+            signString += key + params[key];
+        });
 
-        return new Response(JSON.stringify(data), {
+        // Firmar con MD5 usando crypto.subtle
+        const encoder = new TextEncoder();
+        const data = encoder.encode(APP_SECRET + signString + APP_SECRET);
+        const hashBuffer = await crypto.subtle.digest("MD5", data);
+
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const sign = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+        const query = new URLSearchParams({
+            ...params,
+            sign
+        });
+
+        const apiUrl = `https://api.banggood.com/api2/request.api?${query.toString()}`;
+
+        const response = await fetch(apiUrl);
+        const json = await response.json();
+
+        return new Response(JSON.stringify(json), {
             headers: { "Content-Type": "application/json" }
         });
 
