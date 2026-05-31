@@ -185,6 +185,7 @@ __name(onRequest3, "onRequest3");
 __name2(onRequest3, "onRequest");
 async function onRequest4(context) {
   try {
+    console.log("=== WORKER STARTING ===");
     const { request, env } = context;
     const url = new URL(request.url);
     const keyword = url.searchParams.get("q") || "";
@@ -192,6 +193,10 @@ async function onRequest4(context) {
     const pageSize = url.searchParams.get("pageSize") || 20;
     const APP_KEY = env.BANGGOOD_APP_KEY;
     const APP_SECRET = env.BANGGOOD_APP_SECRET;
+    console.log("KEYS CHECK:");
+    console.log("- APP_KEY exists:", !!APP_KEY);
+    console.log("- APP_SECRET exists:", !!APP_SECRET);
+    console.log("- Keyword:", keyword);
     const params = {
       api: "product.search",
       app_key: APP_KEY,
@@ -205,22 +210,28 @@ async function onRequest4(context) {
     sortedKeys.forEach((key) => {
       signString += key + params[key];
     });
+    console.log("Sign string:", signString);
     const encoder = new TextEncoder();
     const data = encoder.encode(APP_SECRET + signString + APP_SECRET);
     const hashBuffer = await crypto.subtle.digest("MD5", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const sign = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    console.log("Generated sign:", sign);
     const query = new URLSearchParams({
       ...params,
       sign
     });
     const apiUrl = `https://api.banggood.com/api2/request.api?${query.toString()}`;
+    console.log("Calling Banggood API:", apiUrl.replace(APP_SECRET, "***"));
     const response = await fetch(apiUrl);
     const json = await response.json();
+    console.log("Banggood response:", json);
     return new Response(JSON.stringify(json), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
+    console.error("WORKER ERROR:", err);
+    console.error("Error stack:", err.stack);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
@@ -229,279 +240,9 @@ async function onRequest4(context) {
 }
 __name(onRequest4, "onRequest4");
 __name2(onRequest4, "onRequest");
-async function signRequest(params, secret) {
-  if (!params || typeof params !== "object") throw new Error("signRequest: params debe ser un objeto");
-  if (!secret) throw new Error("signRequest: secret es obligatorio");
-  const sortedKeys = Object.keys(params).sort();
-  let basestring = "";
-  for (const key of sortedKeys) {
-    basestring += key + params[key];
-  }
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const messageData = encoder.encode(basestring);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-  const hashArray = Array.from(new Uint8Array(signatureBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
-}
-__name(signRequest, "signRequest");
-__name2(signRequest, "signRequest");
-async function callAliExpressApi(method, businessParams, env) {
-  const APP_KEY = env.ALI_APP_KEY;
-  const APP_SECRET = env.ALI_APP_SECRET;
-  if (!APP_KEY || !APP_SECRET) {
-    throw new Error("Faltan credenciales ALI_APP_KEY o ALI_APP_SECRET.");
-  }
-  const API_URL = "https://api-sg.aliexpress.com/sync/portal/affiliate";
-  const timestamp = Date.now().toString();
-  const commonParams = {
-    app_key: APP_KEY,
-    format: "json",
-    method,
-    sign_method: "sha256",
-    timestamp,
-    v: "2.0"
-  };
-  const sign = await signRequest(commonParams, APP_SECRET);
-  const bodyParts = [];
-  const sortedCommonKeys = Object.keys(commonParams).sort();
-  for (const key of sortedCommonKeys) {
-    bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(commonParams[key])}`);
-  }
-  for (const key of Object.keys(businessParams)) {
-    const value = typeof businessParams[key] === "object" ? JSON.stringify(businessParams[key]) : businessParams[key];
-    bodyParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
-  }
-  bodyParts.push(`sign=${encodeURIComponent(sign)}`);
-  const body = bodyParts.join("&");
-  const fullUrl = API_URL + "?" + body;
-  console.log("FULL_REQUEST_URL:", fullUrl);
-  try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body
-    });
-    const text = await response.text();
-    try {
-      return JSON.parse(text);
-    } catch (parseError) {
-      console.error("[ALIEXPRESS] Error parseando JSON:", text.substring(0, 500));
-      return {
-        error_response: {
-          msg: "Respuesta de la API no v\xE1lida",
-          code: response.status,
-          raw: text.substring(0, 200)
-        }
-      };
-    }
-  } catch (fetchError) {
-    console.error("[ALIEXPRESS] Error de red:", fetchError);
-    return {
-      error_response: {
-        msg: "Error de red al conectar con AliExpress",
-        details: fetchError.message
-      }
-    };
-  }
-}
-__name(callAliExpressApi, "callAliExpressApi");
-__name2(callAliExpressApi, "callAliExpressApi");
-var corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Max-Age": "86400"
-};
-function handleOptions(request) {
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      headers: corsHeaders
-    });
-  }
-  return null;
-}
-__name(handleOptions, "handleOptions");
-__name2(handleOptions, "handleOptions");
-function parseAliExpressItem(item) {
-  if (!item || typeof item !== "object") {
-    return null;
-  }
-  const id = item.product_id || item.item_id || item.id || (item.product_detail_url ? item.product_detail_url.match(/(\d+)\.html/)?.[1] : null);
-  if (!id) {
-    return null;
-  }
-  const title = item.product_title || item.title || "Producto de AliExpress";
-  const price = parseFloat(item.target_sale_price || item.sale_price || item.price || 0);
-  const oldPrice = item.target_original_price || item.original_price || item.old_price ? parseFloat(item.target_original_price || item.original_price || item.old_price) : null;
-  const image = item.product_main_image_url || item.image_url || item.image || item.product_small_image_urls && item.product_small_image_urls[0] || "";
-  const link = item.product_detail_url || item.promotion_link || item.product_url || item.link || "";
-  return {
-    id: String(id),
-    title: String(title),
-    price: isNaN(price) ? 0 : price,
-    old_price: oldPrice && !isNaN(oldPrice) ? oldPrice : null,
-    image: String(image),
-    link: String(link),
-    shop: "AliExpress",
-    rating: item.evaluate_rate || item.rating || null,
-    sales: parseInt(item.last_thirty_days_relevant_shelf_commission || item.sales || 0, 10)
-  };
-}
-__name(parseAliExpressItem, "parseAliExpressItem");
-__name2(parseAliExpressItem, "parseAliExpressItem");
-function logAliExpressRequest(method, params, endpoint) {
-  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-  const requestInfo = {
-    timestamp,
-    method,
-    endpoint,
-    params: {
-      keyword: params.keyword || "N/A",
-      page_size: params.page_size || "N/A",
-      page_no: params.page_no || "N/A",
-      tracking_id: params.tracking_id || "N/A",
-      promotion_link_type: params.promotion_link_type || "N/A"
-    }
-  };
-  console.log("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
-  console.log("\u{1F4E4} REQUEST_TO_ALIEXPRESS");
-  console.log("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
-  console.log(`\u23F0 Timestamp: ${requestInfo.timestamp}`);
-  console.log(`\u{1F517} Endpoint: ${requestInfo.endpoint}`);
-  console.log(`\u{1F4CB} M\xE9todo: ${requestInfo.method}`);
-  console.log("\u{1F4E6} Par\xE1metros:");
-  console.log(JSON.stringify(requestInfo.params, null, 2));
-  console.log("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
-  return requestInfo;
-}
-__name(logAliExpressRequest, "logAliExpressRequest");
-__name2(logAliExpressRequest, "logAliExpressRequest");
 async function onRequest5(context) {
-  const { request, env } = context;
-  const url = new URL(request.url);
-  const optionsResponse = handleOptions(request);
-  if (optionsResponse) return optionsResponse;
-  const keyword = url.searchParams.get("keyword") || "smart home";
-  const hot = url.searchParams.get("hot") === "true";
-  const linkOnly = url.searchParams.get("linkOnly") === "true";
-  const productId = url.searchParams.get("productId");
-  console.log("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
-  if (linkOnly && productId) {
-    console.log("[ALIEXPRESS] Modo: Generar Link Directo para ID:", productId);
-    try {
-      const bizParams = {
-        tracking_id: env.ALI_TRACKING_ID || "Domotech_2026",
-        promotion_link_type: "0",
-        source_values: `https://www.aliexpress.com/item/${productId}.html`
-      };
-      const endpoint = env.ALI_API_ENDPOINT || "aliexpress.affiliate.link.generate";
-      logAliExpressRequest("aliexpress.affiliate.link.generate", bizParams, endpoint);
-      const linkRes = await callAliExpressApi("aliexpress.affiliate.link.generate", bizParams, env);
-      const promotionLink = linkRes?.aliexpress_affiliate_link_generate_response?.resp_result?.result?.promotion_links?.promotion_link?.[0]?.promotion_link;
-      if (promotionLink) {
-        return new Response(JSON.stringify({ promotion_link: promotionLink }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-      throw new Error("API no devolvi\xF3 un promotion_link");
-    } catch (err) {
-      console.error("[ERROR] Generaci\xF3n link:", err.message);
-      return new Response(JSON.stringify({ error: err.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-  }
-  console.log("[ALIEXPRESS] Modo: B\xFAsqueda:", keyword, "(Hot:", hot, ")");
-  let cache;
   try {
-    cache = caches.default;
-  } catch (e) {
-  }
-  const cacheKey = new Request(url.toString());
-  if (cache) {
-    try {
-      const cached = await cache.match(cacheKey);
-      if (cached) {
-        console.log("[CACHE] Hit!");
-        return cached;
-      }
-    } catch (e) {
-    }
-  }
-  const cleanKeyword = keyword.trim().replace(/[^\w\s]/gi, "").split(/\s+/).slice(0, 5).join(" ");
-  const businessParams = {
-    keyword: cleanKeyword,
-    page_size: 20,
-    page_no: 1,
-    tracking_id: env.ALI_TRACKING_ID || "Domotech_2026"
-  };
-  const METHOD_HOT = "aliexpress.affiliate.hotproduct.query";
-  const METHOD_NORMAL = "aliexpress.affiliate.product.query";
-  try {
-    const method = hot ? METHOD_HOT : METHOD_NORMAL;
-    const endpoint = env.ALI_API_ENDPOINT || "https://api.aliexpress.com/";
-    logAliExpressRequest(method, businessParams, endpoint);
-    let apiResponse = await callAliExpressApi(method, businessParams, env);
-    const hasError = !apiResponse || apiResponse.error_response || !(apiResponse.aliexpress_affiliate_hotproduct_query_response || apiResponse.aliexpress_affiliate_product_query_response);
-    if (hasError && hot) {
-      console.log("[FALLBACK] Hot fall\xF3, intentando normal...");
-      logAliExpressRequest(METHOD_NORMAL, businessParams, endpoint);
-      apiResponse = await callAliExpressApi(METHOD_NORMAL, businessParams, env);
-    }
-    const responseData = apiResponse?.aliexpress_affiliate_product_query_response || apiResponse?.aliexpress_affiliate_hotproduct_query_response || apiResponse;
-    const rawItems = responseData?.resp_result?.result?.products || responseData?.result?.products || responseData?.resp_result?.result?.items || [];
-    const cleaned = rawItems.map((item) => parseAliExpressItem(item)).filter((item) => item && item.id);
-    console.log("[ALIEXPRESS] \xC9xito:", cleaned.length, "productos");
-    const response = new Response(JSON.stringify({ items: cleaned }), {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=600"
-      }
-    });
-    if (cache) context.waitUntil(cache.put(cacheKey, response.clone()));
-    return response;
-  } catch (err) {
-    console.error("[ERROR] Excepci\xF3n b\xFAsqueda:", err.message);
-    return new Response(JSON.stringify({ error: err.message, items: [] }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
-}
-__name(onRequest5, "onRequest5");
-__name2(onRequest5, "onRequest");
-async function onRequest6(context) {
-  const { request } = context;
-  const optionsResponse = handleOptions(request);
-  if (optionsResponse) return optionsResponse;
-  const url = new URL(request.url);
-  const keyword = url.searchParams.get("keyword") || "smart home";
-  return new Response(JSON.stringify({
-    message: "Endpoint de Amazon listo. Se requiere configuraci\xF3n de PA-API.",
-    keyword_recibida: keyword,
-    items: []
-  }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
-}
-__name(onRequest6, "onRequest6");
-__name2(onRequest6, "onRequest");
-async function onRequest7(context) {
-  try {
+    console.log("=== WORKER STARTING ===");
     const { request, env } = context;
     const url = new URL(request.url);
     const keyword = url.searchParams.get("q") || "";
@@ -509,6 +250,10 @@ async function onRequest7(context) {
     const pageSize = url.searchParams.get("pageSize") || 20;
     const APP_KEY = env.BANGGOOD_APP_KEY;
     const APP_SECRET = env.BANGGOOD_APP_SECRET;
+    console.log("KEYS CHECK:");
+    console.log("- APP_KEY exists:", !!APP_KEY);
+    console.log("- APP_SECRET exists:", !!APP_SECRET);
+    console.log("- Keyword:", keyword);
     const params = {
       api: "product.search",
       app_key: APP_KEY,
@@ -522,30 +267,36 @@ async function onRequest7(context) {
     sortedKeys.forEach((key) => {
       signString += key + params[key];
     });
+    console.log("Sign string:", signString);
     const encoder = new TextEncoder();
     const data = encoder.encode(APP_SECRET + signString + APP_SECRET);
     const hashBuffer = await crypto.subtle.digest("MD5", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const sign = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    console.log("Generated sign:", sign);
     const query = new URLSearchParams({
       ...params,
       sign
     });
     const apiUrl = `https://api.banggood.com/api2/request.api?${query.toString()}`;
+    console.log("Calling Banggood API:", apiUrl.replace(APP_SECRET, "***"));
     const response = await fetch(apiUrl);
     const json = await response.json();
+    console.log("Banggood response:", json);
     return new Response(JSON.stringify(json), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
+    console.error("WORKER ERROR:", err);
+    console.error("Error stack:", err.stack);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequest7, "onRequest7");
-__name2(onRequest7, "onRequest");
+__name(onRequest5, "onRequest5");
+__name2(onRequest5, "onRequest");
 var routes = [
   {
     routePath: "/banggood/categories",
@@ -576,25 +327,11 @@ var routes = [
     modules: [onRequest4]
   },
   {
-    routePath: "/aliexpress",
-    mountPath: "/aliexpress",
-    method: "",
-    middlewares: [],
-    modules: [onRequest5]
-  },
-  {
-    routePath: "/amazon",
-    mountPath: "/amazon",
-    method: "",
-    middlewares: [],
-    modules: [onRequest6]
-  },
-  {
     routePath: "/banggood",
     mountPath: "/banggood",
     method: "",
     middlewares: [],
-    modules: [onRequest7]
+    modules: [onRequest5]
   }
 ];
 function lexer(str) {
