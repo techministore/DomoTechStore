@@ -1,7 +1,5 @@
 export async function onRequest(context) {
     try {
-        console.log("=== BANGGOOD WORKER STARTING ===");
-
         const { request, env } = context;
         const url = new URL(request.url);
 
@@ -12,79 +10,63 @@ export async function onRequest(context) {
         const APP_KEY = env.BANGGOOD_APP_KEY;
         const APP_SECRET = env.BANGGOOD_APP_SECRET;
 
-        console.log("KEYS CHECK:");
-        console.log("- APP_KEY exists:", !!APP_KEY);
-        console.log("- APP_SECRET exists:", !!APP_SECRET);
-        console.log("- Keyword:", keyword);
-
-        // Parámetros correctos de la API nueva
+        // Parámetros reales de la API de afiliados
         const params = {
             api_key: APP_KEY,
-            keyword: keyword,
-            page,
-            page_size: pageSize,
-            timestamp: Math.floor(Date.now() / 1000)
+            keywords: keyword,
+            page: page,
+            pagesize: pageSize,
+            currency: "EUR",
+            warehouse: "CN"
         };
 
-        // Ordenar parámetros alfabéticamente
+        // Ordenar parámetros
         const sortedKeys = Object.keys(params).sort();
         let signString = "";
         sortedKeys.forEach(key => {
             signString += key + params[key];
         });
 
-        console.log("Sign string:", signString);
-
-        // Firmar con MD5 usando crypto.subtle
+        // Firma MD5
         const encoder = new TextEncoder();
         const data = encoder.encode(APP_SECRET + signString + APP_SECRET);
         const hashBuffer = await crypto.subtle.digest("MD5", data);
-
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const sign = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-
-        console.log("Generated sign:", sign);
 
         const query = new URLSearchParams({
             ...params,
             sign
         });
 
-        // ENDPOINT NUEVO Y CORRECTO
-        const apiUrl = `https://api.banggood.com/api2/product/search?${query.toString()}`;
-        console.log("Calling Banggood API:", apiUrl.replace(APP_SECRET, "***"));
+        // ENDPOINT REAL DE AFILIADOS
+        const apiUrl = `https://api.banggood.com/product/search?${query.toString()}`;
 
         const response = await fetch(apiUrl);
-        console.log("Banggood response status:", response.status);
-
-        const responseText = await response.text();
-        console.log("Banggood response text:", responseText);
+        const text = await response.text();
 
         let json;
         try {
-            json = JSON.parse(responseText);
-        } catch (e) {
-            console.error("Failed to parse JSON from Banggood:", e);
-            return new Response(JSON.stringify({ 
-                error: "Invalid JSON from Banggood", 
-                raw: responseText 
+            json = JSON.parse(text);
+        } catch {
+            return new Response(JSON.stringify({
+                error: "Invalid JSON from Banggood",
+                raw: text
             }), {
                 status: 500,
                 headers: { "Content-Type": "application/json" }
             });
         }
 
-        console.log("Banggood response JSON:", json);
-
         return new Response(JSON.stringify(json), {
             headers: { "Content-Type": "application/json" }
         });
 
     } catch (err) {
-        console.error("WORKER ERROR:", err);
         return new Response(JSON.stringify({ error: err.message }), {
             status: 500,
             headers: { "Content-Type": "application/json" }
         });
     }
 }
+
