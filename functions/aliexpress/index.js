@@ -9,12 +9,14 @@ export async function onRequest(context) {
         const page = url.searchParams.get("page") || 1;
         const pageSize = url.searchParams.get("pageSize") || 20;
 
-        const APP_KEY = env.ALIEXPRESS_APP_KEY;
-        const APP_SECRET = env.ALIEXPRESS_APP_SECRET;
+        const APP_KEY = env.ALI_APP_KEY;
+        const APP_SECRET = env.ALI_APP_SECRET;
+        const TRACKING_ID = env.ALI_TRACKING_ID;
 
         console.log("KEYS CHECK:");
         console.log("- APP_KEY exists:", !!APP_KEY);
         console.log("- APP_SECRET exists:", !!APP_SECRET);
+        console.log("- TRACKING_ID exists:", !!TRACKING_ID);
         console.log("- Keyword:", keyword);
 
         // Parámetros oficiales de IOP
@@ -28,7 +30,8 @@ export async function onRequest(context) {
             fields: "product_id,product_title,product_main_image_url,product_small_image_urls,product_detail_url,sale_price,discount",
             keywords: keyword,
             page_no: page,
-            page_size: pageSize
+            page_size: pageSize,
+            tracking_id: TRACKING_ID
         };
 
         // Ordenar parámetros alfabéticamente
