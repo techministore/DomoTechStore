@@ -1,6 +1,7 @@
 export async function onRequest(context) {
     try {
-        console.log("=== WORKER STARTING ===");
+        console.log("=== BANGGOOD WORKER STARTING ===");
+
         const { request, env } = context;
         const url = new URL(request.url);
 
@@ -16,12 +17,14 @@ export async function onRequest(context) {
         console.log("- APP_SECRET exists:", !!APP_SECRET);
         console.log("- Keyword:", keyword);
 
+        // Parámetros correctos de la API nueva
         const params = {
-            app_key: APP_KEY,
+            api_key: APP_KEY,
             keywords: keyword,
             page,
             page_size: pageSize,
-            language: "en"
+            language: "en",
+            timestamp: Math.floor(Date.now() / 1000)
         };
 
         // Ordenar parámetros alfabéticamente
@@ -48,13 +51,12 @@ export async function onRequest(context) {
             sign
         });
 
-        // ENDPOINT CORRECTO
-        const apiUrl = `https://api.banggood.com/api/search?${query.toString()}`;
+        // ENDPOINT NUEVO Y CORRECTO
+        const apiUrl = `https://api.banggood.com/api2/product/search?${query.toString()}`;
         console.log("Calling Banggood API:", apiUrl.replace(APP_SECRET, "***"));
 
         const response = await fetch(apiUrl);
         console.log("Banggood response status:", response.status);
-        console.log("Banggood response headers:", response.headers);
 
         const responseText = await response.text();
         console.log("Banggood response text:", responseText);
@@ -64,7 +66,10 @@ export async function onRequest(context) {
             json = JSON.parse(responseText);
         } catch (e) {
             console.error("Failed to parse JSON from Banggood:", e);
-            return new Response(JSON.stringify({ error: "Invalid JSON from Banggood", raw: responseText }), {
+            return new Response(JSON.stringify({ 
+                error: "Invalid JSON from Banggood", 
+                raw: responseText 
+            }), {
                 status: 500,
                 headers: { "Content-Type": "application/json" }
             });
@@ -78,7 +83,6 @@ export async function onRequest(context) {
 
     } catch (err) {
         console.error("WORKER ERROR:", err);
-        console.error("Error stack:", err.stack);
         return new Response(JSON.stringify({ error: err.message }), {
             status: 500,
             headers: { "Content-Type": "application/json" }
