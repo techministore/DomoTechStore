@@ -1,6 +1,6 @@
 export async function onRequest(context) {
     try {
-        console.log("=== ALIEXPRESS WORKER STARTING ===");
+        console.log("=== ALIEXPRESS IOP WORKER STARTING ===");
 
         const { request, env } = context;
         const url = new URL(request.url);
@@ -17,14 +17,18 @@ export async function onRequest(context) {
         console.log("- APP_SECRET exists:", !!APP_SECRET);
         console.log("- Keyword:", keyword);
 
-        // Parámetros correctos de la API de AliExpress
+        // Parámetros oficiales de IOP
         const params = {
-            api_key: APP_KEY,
+            app_key: APP_KEY,
+            method: "aliexpress.affiliate.product.query",
+            timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
+            sign_method: "md5",
+            format: "json",
+            v: "2.0",
+            fields: "product_id,product_title,product_main_image_url,product_small_image_urls,product_detail_url,sale_price,discount",
             keywords: keyword,
-            page,
-            page_size: pageSize,
-            language: "en",
-            timestamp: Math.floor(Date.now() / 1000)
+            page_no: page,
+            page_size: pageSize
         };
 
         // Ordenar parámetros alfabéticamente
@@ -34,7 +38,7 @@ export async function onRequest(context) {
             signString += key + params[key];
         });
 
-        console.log("Sign string:", signString);
+        console.log("Concatenate string (signString):", signString);
 
         // Firmar con MD5 usando crypto.subtle
         const encoder = new TextEncoder();
@@ -42,7 +46,7 @@ export async function onRequest(context) {
         const hashBuffer = await crypto.subtle.digest("MD5", data);
 
         const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const sign = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+        const sign = hashArray.map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
 
         console.log("Generated sign:", sign);
 
@@ -51,9 +55,9 @@ export async function onRequest(context) {
             sign
         });
 
-        // ENDPOINT DE ALIEXPRESS
-        const apiUrl = `https://api.aliexpress.com/v2/product/search?${query.toString()}`;
-        console.log("Calling AliExpress API:", apiUrl.replace(APP_SECRET, "***"));
+        // ENDPOINT OFICIAL IOP
+        const apiUrl = `https://api.aliexpress.com/sync?${query.toString()}`;
+        console.log("Calling AliExpress API:", apiUrl);
 
         const response = await fetch(apiUrl);
         console.log("AliExpress response status:", response.status);
