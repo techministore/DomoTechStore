@@ -20,10 +20,9 @@ export async function onRequest(context) {
         // Parámetros correctos de la API nueva
         const params = {
             api_key: APP_KEY,
-            keywords: keyword,
+            keyword: keyword,
             page,
             page_size: pageSize,
-            language: "en",
             timestamp: Math.floor(Date.now() / 1000)
         };
 
