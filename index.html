@@ -6,15 +6,13 @@
     <title>DomoTechStore 2026 | Mejores Gadgets Domóticos y Tecnología Smart Home</title>
     <meta name="description" content="Descubre la mejor tecnología y domótica barata en 2026. Comparativas de enchufes inteligentes, bombillas RGB, cámaras WiFi y kits de inicio para tu Smart Home con cupones activos de Banggood.">
     <meta name="keywords" content="domótica barata, tecnología hogar inteligente, enchufes inteligentes 2026, cámaras wifi económicas, bombillas alexa baratas, smart home español, cupones banggood">
-    
-    <!-- Open Graph / Facebook -->
+
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://domotechstore.pages.dev/">
     <meta property="og:title" content="DomoTechStore 2026 | Tecnología y Domótica para todos los hogares">
     <meta property="og:description" content="Guías de compra y ofertas en los mejores dispositivos inteligentes. Transforma tu casa hoy con cupones activos.">
     <meta property="og:image" content="https://domotechstore.pages.dev/assets/img/og-image.jpg">
 
-    <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://domotechstore.pages.dev/">
     <meta property="twitter:title" content="DomoTechStore | Tecnología y Domótica Barata">
@@ -27,42 +25,41 @@
     <link rel="stylesheet" href="/assets/css/style.css">
     <link rel="stylesheet" href="/assets/css/responsive.css">
 
-<!-- SCHEMA: WEBSITE -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "DomoTechStore",
-  "url": "https://domotechstore.pages.dev/",
-  "description": "La mejor selección de tecnología y domótica barata 2026 con cupones activos",
-  "potentialAction": {
-    "@type": "SearchAction",
-    "target": "https://domotechstore.pages.dev/index.html?q={search_term_string}",
-    "query-input": "required name=search_term_string"
-  }
-}
-</script>
+    <!-- SCHEMA: WEBSITE -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "DomoTechStore",
+      "url": "https://domotechstore.pages.dev/",
+      "description": "La mejor selección de tecnología y domótica barata 2026 con cupones activos",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://domotechstore.pages.dev/index.html?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
 
-<!-- SCHEMA: ORGANIZATION -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "DomoTechStore",
-  "url": "https://domotechstore.pages.dev/",
-  "logo": "https://domotechstore.pages.dev/assets/img/logo/domotech-logo.png",
-  "sameAs": [
-    "https://www.facebook.com/DomoTechStore",
-    "https://www.instagram.com/DomoTechStore",
-    "https://www.youtube.com/@DomoTechStore"
-  ]
-}
-</script>
+    <!-- SCHEMA: ORGANIZATION -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "DomoTechStore",
+      "url": "https://domotechstore.pages.dev/",
+      "logo": "https://domotechstore.pages.dev/assets/img/logo/domotech-logo.png",
+      "sameAs": [
+        "https://www.facebook.com/DomoTechStore",
+        "https://www.instagram.com/DomoTechStore",
+        "https://www.youtube.com/@DomoTechStore"
+      ]
+    }
+    </script>
 </head>
 
 <body>
 
-    <!-- HEADER -->
     <div id="header-placeholder"></div>
 
     <main>
@@ -78,7 +75,7 @@
             </div>
         </section>
 
-        <!-- 🎟️ CUPONES BANGGOOD (NUEVO) -->
+        <!-- 🎟️ CUPONES BANGGOOD -->
         <section class="section bg-dark-alt">
             <div class="container">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
@@ -97,11 +94,11 @@
         <section class="ofertas-dia section bg-dark-alt">
             <div class="container">
                 <h2 class="section-title">⚡ Ofertas del día</h2>
-                <div id="ofertas-dia" class="grid grid-4"></div>
+                <div id="daily-offers" class="grid grid-4"></div>
             </div>
         </section>
 
-        <!-- 🌟 OFERTAS ESPECIALES BANGGOOD (NUEVO) -->
+        <!-- 🌟 OFERTAS ESPECIALES -->
         <section class="section">
             <div class="container">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
@@ -116,42 +113,36 @@
             </div>
         </section>
 
-        <!-- RECOMENDACIONES PERSONALIZADAS (Dinamismo nivel PRO) -->
+        <!-- RECOMENDACIONES -->
         <section class="section">
             <div class="container">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
                     <span style="font-size: 2rem;">✨</span>
                     <h2 class="section-title" id="recomendaciones-titulo" style="margin-bottom: 0;">Recomendados para ti</h2>
                 </div>
-                <div id="recomendaciones-usuario" class="grid grid-4">
-                    <!-- Se carga dinámicamente según el historial del usuario -->
-                </div>
+                <div id="recomendaciones-usuario" class="grid grid-4"></div>
             </div>
         </section>
 
-        <!-- PRODUCTOS VISTOS RECIENTEMENTE (Fidelización) -->
+        <!-- VISTOS RECIENTEMENTE -->
         <section class="section bg-dark-alt" style="display: none;">
             <div class="container">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
                     <span style="font-size: 2rem;">🕒</span>
                     <h2 class="section-title" style="margin-bottom: 0;">Vistos recientemente</h2>
                 </div>
-                <div id="vistos-recientemente" class="grid grid-4">
-                    <!-- Se carga desde localStorage -->
-                </div>
+                <div id="vistos-recientemente" class="grid grid-4"></div>
             </div>
         </section>
 
-        <!-- TOP VENTAS POR CATEGORÍA -->
+        <!-- TOP VENTAS -->
         <section class="section">
             <div class="container">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 30px;">
                     <span style="font-size: 2rem;">🏆</span>
                     <h2 class="section-title" style="margin-bottom: 0;">Top ventas por categoría</h2>
                 </div>
-                <div id="top-ventas-categorias" class="top-sales-grid">
-                    <!-- Cargado dinámicamente -->
-                </div>
+                <div id="top-ventas-categorias" class="top-sales-grid"></div>
             </div>
         </section>
 
@@ -159,7 +150,6 @@
         <section class="section">
             <div class="container">
                 <h2 class="section-title">Guías de tecnología 2026</h2>
-
                 <div class="grid grid-4">
 
                     <article class="card">
@@ -266,71 +256,31 @@
 
     </main>
 
-    <!-- FOOTER -->
     <div id="footer-placeholder"></div>
 
     <!-- 🔧 SCRIPTS - ORDEN IMPORTANTE -->
-    <!-- 1. Core & Logger -->
     <script src="/assets/js/main.js"></script>
-    
-    <!-- 2. Banggood API Modules -->
-    <script src="/assets/js/banggood-api-v2.js"></script>
-    <script src="/assets/js/banggood-coupons.js"></script>
-    
-    <!-- 3. Search & Utilities -->
     <script src="/assets/js/buscador.js"></script>
 
-    <!-- 4. Initialize Banggood Sections (After modules loaded) -->
+    <!-- NUEVO MÓDULO UI -->
+    <script src="/assets/js/banggood-ui.js"></script>
+
+    <!-- INICIALIZACIÓN -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Cargar cupones en el contenedor
-            setTimeout(() => {
-                const couponsContainer = document.getElementById('coupons-section');
-                if (couponsContainer) {
-                    loadCouponsSection('coupons-section');
-                }
-            }, 1000);
 
-            // Cargar ofertas especiales
+            // Cupones
             setTimeout(() => {
-                const offersContainer = document.getElementById('special-offers');
-                if (offersContainer) {
-                    loadBanggoodSpecialOffers();
-                }
-            }, 1500);
+                banggoodUI.loadCoupons('coupons-section');
+            }, 800);
 
-            // Log estadísticas
-            console.log('🎯 DomoTechStore - Banggood Integration Ready');
-            console.log('📊 API Stats:', banggoodAPI.getStats());
+            // Ofertas del día
+            setTimeout(() => {
+                banggoodUI.loadDailyOffers('daily-offers');
+            }, 1200);
+
+            console.log('🎯 DomoTechStore - Banggood UI Ready');
         });
-
-        /**
-         * Cargar y mostrar ofertas especiales de Banggood
-         */
-        async function loadBanggoodSpecialOffers() {
-            const container = document.getElementById('special-offers');
-            if (!container) return;
-
-            try {
-                container.innerHTML = renderLoadingSkeleton(4);
-                
-                const products = await searchBanggoodProducts('special offer smart home', {
-                    page: 1
-                });
-
-                if (products && products.length > 0) {
-                    const normalized = products.map(p => normalizeBanggoodProduct(p));
-                    const html = normalized.slice(0, 4).map(renderFusedProductCard).join('');
-                    container.innerHTML = html;
-                    Logger.info('✅ Ofertas especiales cargadas');
-                } else {
-                    container.innerHTML = renderEmptyState();
-                }
-            } catch (e) {
-                Logger.error('Error cargando ofertas especiales:', e);
-                container.innerHTML = renderEmptyState();
-            }
-        }
     </script>
 
 </body>
