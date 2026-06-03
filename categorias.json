@@ -1,0 +1,51 @@
+[
+    {
+        "id": 1,
+        "nombre": "Iluminación Inteligente",
+        "slug": "iluminacion-inteligente",
+        "keyword": "smart led bulb rgb alexa zigbee light",
+        "descripcion_corta": "Bombillas, tiras LED y lámparas conectadas para crear el ambiente perfecto."
+    },
+    {
+        "id": 2,
+        "nombre": "Seguridad y Vigilancia",
+        "slug": "seguridad-vigilancia",
+        "keyword": "security camera wifi outdoor indoor tuya smart life",
+        "descripcion_corta": "Protege tu hogar con cámaras, alarmas y cerraduras inteligentes de última generación."
+    },
+    {
+        "id": 3,
+        "nombre": "Enchufes y Energía Smart",
+        "slug": "enchufes-energia-smart",
+        "keyword": "smart plug wifi power monitor eu standard 20a",
+        "descripcion_corta": "Controla el encendido de tus electrodomésticos y ahorra en tu factura eléctrica."
+    },
+    {
+        "id": 4,
+        "nombre": "Sensores y Automatización",
+        "slug": "sensores-automatizacion",
+        "keyword": "zigbee sensor temperature humidity motion tuya gateway",
+        "descripcion_corta": "Haz que tu casa reaccione a tus movimientos y necesidades de forma automática."
+    },
+    {
+        "id": 5,
+        "nombre": "Limpieza Inteligente",
+        "slug": "limpieza-inteligente",
+        "keyword": "robot vacuum mop xiaomi roborock smart cleaning",
+        "descripcion_corta": "Robots aspiradores y gadgets que mantienen tu hogar impecable sin esfuerzo."
+    },
+    {
+        "id": 6,
+        "nombre": "Controladores y Asistentes",
+        "slug": "controladores-asistentes",
+        "keyword": "zigbee gateway hub home assistant universal remote ir",
+        "descripcion_corta": "El cerebro de tu Smart Home: gestiona todo mediante la voz o pantallas táctiles."
+    },
+    {
+        "id": 7,
+        "nombre": "Gaming y Setup Pro",
+        "slug": "gaming-setup-pro",
+        "keyword": "gaming setup accessories rgb lights mechanical keyboard mouse",
+        "descripcion_corta": "Accesorios y periféricos de alto rendimiento para elevar tu experiencia de juego y trabajo."
+    }
+]

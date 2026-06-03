@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparador de Precios Multi-Tienda 2026 - DomoTechStore</title>
+    <meta name="description" content="Compara precios del mismo producto en Banggood, Geekbuying, AliExpress y Temu. Encuentra siempre la mejor oferta en domótica y tecnología smart home.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/responsive.css">
+    <style>
+        /* ── HERO COMPARADOR ── */
+        .comp-hero {
+            background: radial-gradient(circle at top, #1e3a8a 0%, #0f172a 80%);
+            padding: 70px 0 50px;
+            text-align: center;
+        }
+        .comp-hero h1 { font-size: 2.4rem; font-weight: 800; margin-bottom: 12px; }
+        .comp-hero p  { color: var(--muted-text); font-size: 1rem; max-width: 600px; margin: 0 auto 30px; }
+
+        /* ── BARRA DE BÚSQUEDA ── */
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 16px 24px;
+            border-radius: 50px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid var(--border);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-bar input:focus { border-color: var(--primary); }
+        .search-bar input::placeholder { color: var(--muted-text); }
+        .btn-search {
+            padding: 16px 28px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .btn-search:hover { background: var(--primary-dark); transform: scale(1.03); }
+
+        /* ── SUGERENCIAS RÁPIDAS ── */
+        .quick-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+        .quick-tag {
+            padding: 6px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.78rem;
+            color: var(--muted-text);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-tag:hover { background: rgba(59,130,246,0.15); border-color: var(--primary); color: white; }
+
+        /* ── FILTROS DE TIENDA ── */
+        .store-filters {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        .store-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 18px;
+            border-radius: 20px;
+            border: 1.5px solid;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            color: inherit;
+        }
+        .store-chip.banggood  { border-color: #2196F3; color: #2196F3; }
+        .store-chip.geekbuying{ border-color: #ff6b2b; color: #ff6b2b; }
+        .store-chip.aliexpress{ border-color: #ff4747; color: #ff4747; }
+        .store-chip.temu      { border-color: #ff6900; color: #ff6900; }
+        .store-chip.ebay      { border-color: #e53238; color: #e53238; }
+        .store-chip.miravia   { border-color: #4a7bd4; color: #4a7bd4; }
+        .store-chip.cafago    { border-color: #e8321e; color: #e8321e; }
+        .store-chip.tomtop    { border-color: #f26522; color: #f26522; }
+        .store-chip.active    { color: white; }
+        .store-chip.banggood.active   { background: #2196F3; }
+        .store-chip.geekbuying.active { background: #ff6b2b; }
+        .store-chip.aliexpress.active { background: #ff4747; }
+        .store-chip.temu.active       { background: #ff6900; }
+        .store-chip.ebay.active       { background: #e53238; }
+        .store-chip.miravia.active    { background: #4a7bd4; }
+        .store-chip.cafago.active     { background: #e8321e; }
+        .store-chip.tomtop.active     { background: #f26522; }
+
+        /* ── TARJETA DE GRUPO ── */
+        .comp-group {
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: border-color 0.2s;
+        }
+        .comp-group:hover { border-color: rgba(59,130,246,0.4); }
+        .comp-group-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* ── GRID DE TIENDAS ── */
+        .stores-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+        @media (max-width: 768px) {
+            .stores-row { grid-template-columns: 1fr; }
+            .comp-hero h1 { font-size: 1.7rem; }
+            .search-bar { flex-direction: column; }
+        }
+        @media (max-width: 1200px) {
+            .stores-row { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 1201px) {
+            .stores-row { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        /* ── CELDA DE TIENDA ── */
+        .store-cell {
+            border: 1.5px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: rgba(255,255,255,0.02);
+        }
+        .store-cell.winner {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 1px #22c55e, 0 4px 20px rgba(34,197,94,0.12);
+        }
+        .store-cell.unavailable {
+            opacity: 0.35;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+            font-size: 0.85rem;
+            color: var(--muted-text);
+        }
+        .store-name {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .store-name.bg  { color: #2196F3; }
+        .store-name.gb  { color: #ff6b2b; }
+        .store-name.ali { color: #ff4747; }
+        .store-name.tm  { color: #ff6900; }
+        .store-name.eb  { color: #e53238; }
+        .store-name.mir { color: #4a7bd4; }
+        .store-name.caf { color: #e8321e; }
+        .store-name.tt  { color: #f26522; }
+        .store-img {
+            width: 100%;
+            height: 110px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: white;
+            padding: 6px;
+        }
+        .store-price {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .store-old-price {
+            font-size: 0.82rem;
+            text-decoration: line-through;
+            color: var(--muted-text);
+        }
+        .store-discount {
+            font-size: 0.72rem;
+            font-weight: 700;
+            background: #22c55e;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        .store-rating { font-size: 0.8rem; color: var(--muted-text); }
+        .btn-store {
+            display: block;
+            text-align: center;
+            padding: 9px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.82rem;
+            color: white;
+            margin-top: auto;
+            transition: filter 0.2s, transform 0.1s;
+            text-decoration: none;
+        }
+        .btn-store:hover { filter: brightness(1.12); transform: translateY(-1px); }
+        .btn-store.bg  { background: #2196F3; }
+        .btn-store.gb  { background: #ff6b2b; }
+        .btn-store.ali { background: #ff4747; }
+        .btn-store.eb  { background: #e53238; }
+        .btn-store.mir { background: #4a7bd4; }
+        .btn-store.caf { background: #e8321e; }
+        .btn-store.tt  { background: #f26522; }
+
+        .winner-badge {
+            position: absolute;
+            top: -10px;
+            right: 14px;
+            background: #22c55e;
+            color: white;
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── RESUMEN DE AHORRO ── */
+        .saving-banner {
+            margin-top: 14px;
+            padding: 10px 16px;
+            background: rgba(34,197,94,0.1);
+            border: 1px solid rgba(34,197,94,0.3);
+            border-radius: 10px;
+            font-size: 0.85rem;
+            color: #4ade80;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ── ESTADO VACÍO / CARGANDO ── */
+        #comp-results > .state-msg {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted-text);
+        }
+        .state-msg .state-icon { font-size: 3rem; display: block; margin-bottom: 16px; }
+        .state-msg p { font-size: 1rem; }
+
+        /* ── SKELETON ── */
+        .skel-group {
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .skel-line {
+            background: rgba(255,255,255,0.06);
+            border-radius: 6px;
+            animation: pulse 1.4s infinite;
+        }
+
+        /* ── ESTADÍSTICAS ── */
+        .comp-stats {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        .stat-pill {
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: 0.82rem;
+            color: var(--muted-text);
+        }
+        .stat-pill strong { color: var(--light-text); font-size: 1rem; display: block; }
+    </style>
+</head>
+<body>
+
+<div id="header-placeholder"></div>
+
+<main>
+
+    <!-- HERO -->
+    <section class="comp-hero">
+        <div class="container">
+            <div class="badge" style="margin-bottom: 16px; display: inline-block;">COMPARADOR EN TIEMPO REAL</div>
+            <h1>🛒 Compara precios en 8 tiendas</h1>
+            <p>Busca cualquier producto y encuentra al instante cuál tienda ofrece el mejor precio entre 8 tiendas: Banggood, Geekbuying, Temu, eBay, Miravia, Cafago, TomTop y AliExpress.</p>
+
+            <div class="search-bar">
+                <input type="text" id="comp-search" placeholder="Ej: enchufe inteligente tuya, cámara wifi, bombilla rgb..." autocomplete="off">
+                <button class="btn-search" onclick="runComparison()">Comparar →</button>
+            </div>
+
+            <div class="quick-tags" id="quick-tags">
+                <span class="quick-tag" onclick="quickSearch('enchufe inteligente WiFi tuya')">🔌 Enchufe WiFi</span>
+                <span class="quick-tag" onclick="quickSearch('cámara seguridad WiFi 2K')">📷 Cámara WiFi</span>
+                <span class="quick-tag" onclick="quickSearch('bombilla LED RGB alexa zigbee')">💡 Bombilla RGB</span>
+                <span class="quick-tag" onclick="quickSearch('sensor temperatura humedad')">🌡️ Sensor Temp</span>
+                <span class="quick-tag" onclick="quickSearch('robot aspirador wifi tuya')">🤖 Robot Aspirador</span>
+                <span class="quick-tag" onclick="quickSearch('hub zigbee 3.0')">🔗 Hub Zigbee</span>
+                <span class="quick-tag" onclick="quickSearch('tira LED WiFi 10m')">🌈 Tira LED</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- RESULTADOS -->
+    <section class="section" style="padding-top: 40px;">
+        <div class="container">
+
+            <!-- Filtros de tienda -->
+            <div class="store-filters" id="store-filters" style="display:none;">
+                <button class="store-chip banggood active" data-store="banggood" onclick="toggleStore('banggood', this)">
+                    🎁 Banggood
+                </button>
+                <button class="store-chip geekbuying active" data-store="geekbuying" onclick="toggleStore('geekbuying', this)">
+                    🛍️ Geekbuying
+                </button>
+                <button class="store-chip aliexpress active" data-store="aliexpress" onclick="toggleStore('aliexpress', this)">
+                    🛒 AliExpress
+                </button>
+                <button class="store-chip temu active" data-store="temu" onclick="toggleStore('temu', this)">
+                    🟠 Temu
+                </button>
+                <button class="store-chip ebay active" data-store="ebay" onclick="toggleStore('ebay', this)">
+                    📦 eBay
+                </button>
+                <button class="store-chip miravia active" data-store="miravia" onclick="toggleStore('miravia', this)">
+                    🏪 Miravia
+                </button>
+                <button class="store-chip cafago active" data-store="cafago" onclick="toggleStore('cafago', this)">
+                    ⚡ Cafago
+                </button>
+                <button class="store-chip tomtop active" data-store="tomtop" onclick="toggleStore('tomtop', this)">
+                    🔧 TomTop
+                </button>
+            </div>
+
+            <!-- Estadísticas -->
+            <div class="comp-stats" id="comp-stats" style="display:none;">
+                <div class="stat-pill"><strong id="stat-total">0</strong>productos encontrados</div>
+                <div class="stat-pill"><strong id="stat-winner">—</strong>mejor tienda</div>
+                <div class="stat-pill"><strong id="stat-saving">0€</strong>ahorro máximo</div>
+            </div>
+
+            <!-- Contenedor de resultados -->
+            <div id="comp-results">
+                <div class="state-msg">
+                    <span class="state-icon">🔍</span>
+                    <p>Busca un producto para comparar precios en las 8 tiendas a la vez.</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+</main>
+
+<div id="footer-placeholder"></div>
+
+<!-- SCRIPTS -->
+<script src="/assets/js/main.js"></script>
+<script src="/assets/js/geekbuying-ui.js"></script>
+<script src="/assets/js/temu-ui.js"></script>
+<script src="/assets/js/ebay-ui.js"></script>
+<script src="/assets/js/miravia-ui.js"></script>
+<script src="/assets/js/cafago-ui.js"></script>
+<script src="/assets/js/tomtop-ui.js"></script>
+<script src="/assets/js/comparador-multitienda.js"></script>
+
+<script>
+// ============================================================================
+// COMPARADOR MULTI-TIENDA — LÓGICA DE PÁGINA
+// ============================================================================
+
+const comparador = new ComparadorMultitienda();
+let activeStores = new Set(['banggood', 'geekbuying', 'aliexpress', 'temu', 'ebay', 'miravia', 'cafago', 'tomtop']);
+let lastResults = [];
+
+// ─── BÚSQUEDA RÁPIDA ───
+function quickSearch(term) {
+    document.getElementById('comp-search').value = term;
+    runComparison();
+}
+
+// ─── TOGGLE DE TIENDA ───
+function toggleStore(store, btn) {
+    if (activeStores.has(store)) {
+        if (activeStores.size === 1) return; // siempre mínimo 1 activa
+        activeStores.delete(store);
+        btn.classList.remove('active');
+    } else {
+        activeStores.add(store);
+        btn.classList.add('active');
+    }
+    renderResults(lastResults);
+}
+
+// ─── BUSCAR ───
+async function runComparison() {
+    const keyword = document.getElementById('comp-search').value.trim();
+    if (!keyword) return;
+
+    showSkeleton();
+    document.getElementById('store-filters').style.display = 'flex';
+    document.getElementById('comp-stats').style.display = 'none';
+
+    try {
+        await comparador.buscar(keyword);
+        lastResults = comparador.comparativas;
+        renderResults(lastResults);
+        updateStats(lastResults);
+    } catch (e) {
+        showError();
+    }
+}
+
+// ─── RENDERIZAR RESULTADOS ───
+function renderResults(grupos) {
+    const container = document.getElementById('comp-results');
+
+    const visible = grupos.filter(g => {
+        return (activeStores.has('banggood')   && g.banggood)   ||
+               (activeStores.has('geekbuying') && g.geekbuying) ||
+               (activeStores.has('aliexpress') && g.aliexpress) ||
+               (activeStores.has('temu')       && g.temu)       ||
+               (activeStores.has('ebay')       && g.ebay)       ||
+               (activeStores.has('miravia')    && g.miravia)    ||
+               (activeStores.has('cafago')     && g.cafago)     ||
+               (activeStores.has('tomtop')     && g.tomtop);
+    });
+
+    if (visible.length === 0) {
+        container.innerHTML = `
+            <div class="state-msg">
+                <span class="state-icon">😕</span>
+                <p>No se encontraron resultados. Prueba con otro producto.</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = visible.map(grupo => renderGroup(grupo)).join('');
+}
+
+// ─── RENDERIZAR GRUPO ───
+function renderGroup(grupo) {
+    const stores = [
+        { key: 'banggood',   product: grupo.banggood,   cls: 'bg',  label: '🎁 Banggood',    storeName: 'Banggood'   },
+        { key: 'geekbuying', product: grupo.geekbuying, cls: 'gb',  label: '🛍️ Geekbuying',  storeName: 'Geekbuying' },
+        { key: 'aliexpress', product: grupo.aliexpress, cls: 'ali', label: '🛒 AliExpress',   storeName: 'AliExpress' },
+        { key: 'temu',       product: grupo.temu,       cls: 'tm',  label: '🟠 Temu',         storeName: 'Temu'       },
+        { key: 'ebay',       product: grupo.ebay,       cls: 'eb',  label: '📦 eBay',         storeName: 'eBay'       },
+        { key: 'miravia',    product: grupo.miravia,    cls: 'mir', label: '🏪 Miravia',      storeName: 'Miravia'    },
+        { key: 'cafago',     product: grupo.cafago,     cls: 'caf', label: '⚡ Cafago',       storeName: 'Cafago'     },
+        { key: 'tomtop',     product: grupo.tomtop,     cls: 'tt',  label: '🔧 TomTop',      storeName: 'TomTop'     }
+    ];
+
+    const winnerName = grupo.mejorOpcion;
+    const saving = grupo.ahorro || 0;
+
+    const cells = stores.map(({ key, product, cls, label, storeName }) => {
+        if (!activeStores.has(key)) return '';
+        if (!product) {
+            return `<div class="store-cell unavailable">❌ Sin stock en ${storeName}</div>`;
+        }
+
+        const isWinner = storeName === winnerName;
+        const price = parseFloat(product.price || 0);
+        const oldPrice = parseFloat(product.originalPrice || product.original_price || 0);
+        const hasDiscount = oldPrice > price && oldPrice > 0;
+        const discountPct = hasDiscount ? Math.round(((oldPrice - price) / oldPrice) * 100) : 0;
+        const link = product.link || product.url || '#';
+        const img = product.image || 'https://placehold.co/200x200/1e293b/white?text=Sin+imagen';
+        const rating = product.rating ? `⭐ ${parseFloat(product.rating).toFixed(1)}` : '';
+
+        return `
+            <div class="store-cell ${isWinner ? 'winner' : ''}">
+                ${isWinner ? '<span class="winner-badge">✨ Mejor precio</span>' : ''}
+                <div class="store-name ${cls}">${label}</div>
+                <img class="store-img" src="${img}" alt="${product.title || storeName}"
+                     onerror="this.src='https://placehold.co/200x200/1e293b/white?text=Sin+imagen'">
+                <div>
+                    ${hasDiscount ? `<span class="store-old-price">${oldPrice.toFixed(2)}€</span>
+                    <span class="store-discount">-${discountPct}%</span>` : ''}
+                    <div class="store-price">${price.toFixed(2)}€</div>
+                    ${rating ? `<div class="store-rating">${rating}</div>` : ''}
+                </div>
+                <a href="${link}" target="_blank" rel="nofollow sponsored" class="btn-store ${cls}"
+                   onclick="trackClick && trackClick('${product.id || key}', '${key}')">
+                    Ver en ${storeName} →
+                </a>
+            </div>`;
+    }).join('');
+
+    const savingHtml = saving > 0.5
+        ? `<div class="saving-banner">💰 Puedes ahorrar hasta <strong>${saving.toFixed(2)}€</strong> eligiendo bien la tienda.</div>`
+        : '';
+
+    return `
+        <div class="comp-group">
+            <div class="comp-group-title">${grupo.nombre || 'Producto'}</div>
+            <div class="stores-row">${cells}</div>
+            ${savingHtml}
+        </div>`;
+}
+
+// ─── ESTADÍSTICAS ───
+function updateStats(grupos) {
+    const statsEl = document.getElementById('comp-stats');
+    statsEl.style.display = 'flex';
+
+    const total = grupos.length;
+    document.getElementById('stat-total').textContent = total;
+
+    const winnerCounts = {};
+    let maxSaving = 0;
+    for (const g of grupos) {
+        if (g.mejorOpcion) winnerCounts[g.mejorOpcion] = (winnerCounts[g.mejorOpcion] || 0) + 1;
+        if ((g.ahorro || 0) > maxSaving) maxSaving = g.ahorro;
+    }
+
+    const topWinner = Object.entries(winnerCounts).sort((a, b) => b[1] - a[1])[0];
+    document.getElementById('stat-winner').textContent = topWinner ? topWinner[0] : '—';
+    document.getElementById('stat-saving').textContent = maxSaving.toFixed(2) + '€';
+}
+
+// ─── SKELETON ───
+function showSkeleton() {
+    document.getElementById('comp-results').innerHTML = [1, 2, 3].map(() => `
+        <div class="skel-group">
+            <div class="skel-line" style="height:22px;width:60%;margin-bottom:16px;"></div>
+            <div class="stores-row">
+                ${[1,2,3].map(() => `
+                    <div class="skel-group" style="margin:0;padding:16px;gap:10px;display:flex;flex-direction:column;">
+                        <div class="skel-line" style="height:14px;width:50%;"></div>
+                        <div class="skel-line" style="height:110px;width:100%;border-radius:8px;"></div>
+                        <div class="skel-line" style="height:24px;width:60%;"></div>
+                        <div class="skel-line" style="height:36px;width:100%;border-radius:8px;"></div>
+                    </div>`).join('')}
+            </div>
+        </div>`).join('');
+}
+
+// ─── ERROR ───
+function showError() {
+    document.getElementById('comp-results').innerHTML = `
+        <div class="state-msg">
+            <span class="state-icon">⚠️</span>
+            <p>Error al obtener resultados. Por favor, inténtalo de nuevo.</p>
+        </div>`;
+}
+
+// ─── ENTER KEY ───
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('comp-search');
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') runComparison(); });
+
+    // Precargar búsqueda si viene en la URL
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    if (q) {
+        input.value = q;
+        runComparison();
+    }
+});
+</script>
+
+</body>
+</html>
