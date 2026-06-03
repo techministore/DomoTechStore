@@ -10,3 +10,30 @@ ALI_TRACKING_ID=tu_tracking_id_aqui
 BANGGOOD_APP_KEY=aff6a1a99947bda
 BANGGOOD_APP_SECRET=tu_app_secret_completo_aqui
 BANGGOOD_AFFILIATE_ID=tu_affiliate_id_aqui
+
+# Geekbuying API Keys
+# Obtén tus credenciales en: https://www.geekbuying.com/affiliate/
+GEEKBUYING_APP_ID=tu_app_id_aqui
+GEEKBUYING_APP_SECRET=tu_app_secret_aqui
+GEEKBUYING_AFFILIATE_ID=tu_affiliate_id_aqui
+
+# Temu API Keys (PDD Open Platform)
+# Obtén tus credenciales en: https://open.temu.com/ (programa de afiliados)
+TEMU_APP_KEY=tu_app_key_aqui
+TEMU_APP_SECRET=tu_app_secret_aqui
+
+# eBay Partner Network (EPN) — sin aprobación, solo registro
+# Regístrate: https://partnernetwork.ebay.es/ → crea una Campaña → copia el Campaign ID
+EBAY_CAMPAIGN_ID=tu_campaign_id_aqui
+
+# Miravia (vía Awin) — ya tienes los IDs hardcodeados; actualiza si son distintos
+MIRAVIA_AWIN_MID=30521
+MIRAVIA_AWIN_AFFID=1636287
+
+# Cafago — Programa propio o CJ Affiliate
+# Regístrate: https://www.cafago.com/en/affiliate/
+CAFAGO_AFFILIATE_ID=tu_affiliate_id_aqui
+
+# TomTop — Programa propio (aprobación en 24h)
+# Regístrate: https://www.tomtop.com/m-affiliates.html
+TOMTOP_AFFILIATE_ID=tu_affiliate_id_aqui

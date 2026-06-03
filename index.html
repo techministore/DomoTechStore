@@ -113,6 +113,52 @@
             </div>
         </section>
 
+        <!-- 🛍️ OFERTAS GEEKBUYING -->
+        <section class="section bg-dark-alt">
+            <div class="container">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+                    <span style="font-size: 2rem;">🛍️</span>
+                    <h2 class="section-title" style="margin-bottom: 0;">Ofertas Destacadas Geekbuying</h2>
+                    <span style="font-size: 0.75rem; background: #ff6b2b; color: white; padding: 3px 10px; border-radius: 20px; font-weight: 700; margin-left: 5px;">NUEVO</span>
+                </div>
+                <p style="color: var(--muted-text); margin-bottom: 25px; font-size: 0.9rem;">Tecnología y gadgets seleccionados de Geekbuying con los mejores precios del mercado.</p>
+                <div id="geekbuying-offers" class="grid grid-4">
+                    <div class="card" style="display: flex; align-items: center; justify-content: center; min-height: 200px;">
+                        <p style="text-align: center; opacity: 0.5;">Cargando ofertas Geekbuying...</p>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="https://www.geekbuying.com" target="_blank" rel="nofollow sponsored"
+                       style="display: inline-block; padding: 10px 28px; border: 1px solid #ff6b2b; color: #ff6b2b; border-radius: 8px; font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: all 0.2s;">
+                        Ver más en Geekbuying →
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🟠 OFERTAS TEMU -->
+        <section class="section">
+            <div class="container">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+                    <span style="font-size: 2rem;">🟠</span>
+                    <h2 class="section-title" style="margin-bottom: 0;">Ofertas Destacadas Temu</h2>
+                    <span style="font-size: 0.75rem; background: #ff6900; color: white; padding: 3px 10px; border-radius: 20px; font-weight: 700; margin-left: 5px;">NUEVO</span>
+                </div>
+                <p style="color: var(--muted-text); margin-bottom: 25px; font-size: 0.9rem;">Los mejores gadgets de domótica en Temu a precios increíbles con envío gratuito.</p>
+                <div id="temu-offers" class="grid grid-4">
+                    <div class="card" style="display: flex; align-items: center; justify-content: center; min-height: 200px;">
+                        <p style="text-align: center; opacity: 0.5;">Cargando ofertas Temu...</p>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="https://www.temu.com/search_result.html?search_key=smart+home" target="_blank" rel="nofollow sponsored"
+                       style="display: inline-block; padding: 10px 28px; border: 1px solid #ff6900; color: #ff6900; border-radius: 8px; font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: all 0.2s;">
+                        Ver más en Temu →
+                    </a>
+                </div>
+            </div>
+        </section>
+
         <!-- RECOMENDACIONES -->
         <section class="section">
             <div class="container">
@@ -143,6 +189,128 @@
                     <h2 class="section-title" style="margin-bottom: 0;">Top ventas por categoría</h2>
                 </div>
                 <div id="top-ventas-categorias" class="top-sales-grid"></div>
+            </div>
+        </section>
+
+        <!-- 🛒 BANNER COMPARADOR MULTI-TIENDA -->
+        <section class="section" style="padding: 50px 0;">
+            <div class="container">
+                <div style="background: linear-gradient(135deg, #1e293b 0%, #0f2044 100%); border: 1px solid rgba(59,130,246,0.3); border-radius: 24px; padding: 40px; display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 260px;">
+                        <div class="badge" style="margin-bottom: 12px;">8 TIENDAS</div>
+                        <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 10px;">🛒 Comparador Multi-Tienda</h2>
+                        <p style="color: var(--muted-text); margin-bottom: 20px;">Busca cualquier producto y compara el precio en 8 tiendas al instante: Banggood, Geekbuying, Temu, eBay, Miravia, Cafago, TomTop y AliExpress.</p>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <span style="font-size: 0.75rem; background: rgba(33,150,243,0.15); color: #2196F3; padding: 3px 10px; border-radius: 20px; font-weight: 600;">🎁 Banggood</span>
+                            <span style="font-size: 0.75rem; background: rgba(255,107,43,0.15); color: #ff6b2b; padding: 3px 10px; border-radius: 20px; font-weight: 600;">🛍️ Geekbuying</span>
+                            <span style="font-size: 0.75rem; background: rgba(255,105,0,0.15); color: #ff6900; padding: 3px 10px; border-radius: 20px; font-weight: 600;">🟠 Temu</span>
+                            <span style="font-size: 0.75rem; background: rgba(229,50,56,0.15); color: #e53238; padding: 3px 10px; border-radius: 20px; font-weight: 600;">📦 eBay</span>
+                            <span style="font-size: 0.75rem; background: rgba(12,35,64,0.4); color: #8ab4f8; padding: 3px 10px; border-radius: 20px; font-weight: 600;">🏪 Miravia</span>
+                            <span style="font-size: 0.75rem; background: rgba(232,50,30,0.15); color: #e8321e; padding: 3px 10px; border-radius: 20px; font-weight: 600;">⚡ Cafago</span>
+                            <span style="font-size: 0.75rem; background: rgba(242,101,34,0.15); color: #f26522; padding: 3px 10px; border-radius: 20px; font-weight: 600;">🔧 TomTop</span>
+                        </div>
+                    </div>
+                    <div style="flex-shrink: 0;">
+                        <a href="comparativas/comparador-tiendas.html"
+                           style="display: inline-block; background: var(--primary); color: white; padding: 15px 32px; border-radius: 50px; font-weight: 800; font-size: 1rem; transition: all 0.2s;"
+                           onmouseover="this.style.background='var(--primary-dark)'"
+                           onmouseout="this.style.background='var(--primary)'">
+                            Comparar ahora →
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 📦 OFERTAS EBAY -->
+        <section class="section bg-dark-alt">
+            <div class="container">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+                    <span style="font-size: 2rem;">📦</span>
+                    <h2 class="section-title" style="margin-bottom: 0;">Ofertas Destacadas eBay</h2>
+                    <span style="font-size: 0.75rem; background: #e53238; color: white; padding: 3px 10px; border-radius: 20px; font-weight: 700; margin-left: 5px;">EPN</span>
+                </div>
+                <p style="color: var(--muted-text); margin-bottom: 25px; font-size: 0.9rem;">Gadgets de domótica verificados en eBay con envío desde España. Comisión activa vía eBay Partner Network.</p>
+                <div id="ebay-offers" class="grid grid-4">
+                    <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:200px;">
+                        <p style="text-align:center;opacity:.5;">Cargando ofertas eBay...</p>
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:20px;">
+                    <a href="https://www.ebay.es/sch/i.html?_nkw=smart+home+domótica&_sop=12" target="_blank" rel="nofollow sponsored"
+                       style="display:inline-block;padding:10px 28px;border:1px solid #e53238;color:#e53238;border-radius:8px;font-weight:600;font-size:0.9rem;text-decoration:none;">
+                        Ver más en eBay →
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🏪 OFERTAS MIRAVIA -->
+        <section class="section">
+            <div class="container">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+                    <span style="font-size: 2rem;">🏪</span>
+                    <h2 class="section-title" style="margin-bottom: 0;">Ofertas Destacadas Miravia</h2>
+                    <span style="font-size: 0.75rem; background: #0c2340; color: white; padding: 3px 10px; border-radius: 20px; font-weight: 700; margin-left: 5px;">AWIN</span>
+                </div>
+                <p style="color: var(--muted-text); margin-bottom: 25px; font-size: 0.9rem;">Los mejores gadgets en Miravia con envío express a España. Comisión activa vía Awin.</p>
+                <div id="miravia-offers" class="grid grid-4">
+                    <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:200px;">
+                        <p style="text-align:center;opacity:.5;">Cargando ofertas Miravia...</p>
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:20px;">
+                    <a href="https://www.awin1.com/cread.php?awinmid=30521&awinaffid=1636287&ued=https://www.miravia.es/search?q=smart+home" target="_blank" rel="nofollow sponsored"
+                       style="display:inline-block;padding:10px 28px;border:1px solid #0c2340;color:#8ab4f8;border-radius:8px;font-weight:600;font-size:0.9rem;text-decoration:none;">
+                        Ver más en Miravia →
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⚡ OFERTAS CAFAGO -->
+        <section class="section bg-dark-alt">
+            <div class="container">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+                    <span style="font-size: 2rem;">⚡</span>
+                    <h2 class="section-title" style="margin-bottom: 0;">Ofertas Destacadas Cafago</h2>
+                    <span style="font-size: 0.75rem; background: #e8321e; color: white; padding: 3px 10px; border-radius: 20px; font-weight: 700; margin-left: 5px;">NUEVO</span>
+                </div>
+                <p style="color: var(--muted-text); margin-bottom: 25px; font-size: 0.9rem;">Electrónica y gadgets especializados en Cafago. Envío internacional rápido.</p>
+                <div id="cafago-offers" class="grid grid-4">
+                    <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:200px;">
+                        <p style="text-align:center;opacity:.5;">Cargando ofertas Cafago...</p>
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:20px;">
+                    <a href="https://www.cafago.com/en/catalogsearch/result/?q=smart+home" target="_blank" rel="nofollow sponsored"
+                       style="display:inline-block;padding:10px 28px;border:1px solid #e8321e;color:#e8321e;border-radius:8px;font-weight:600;font-size:0.9rem;text-decoration:none;">
+                        Ver más en Cafago →
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🔧 OFERTAS TOMTOP -->
+        <section class="section">
+            <div class="container">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+                    <span style="font-size: 2rem;">🔧</span>
+                    <h2 class="section-title" style="margin-bottom: 0;">Ofertas Destacadas TomTop</h2>
+                    <span style="font-size: 0.75rem; background: #f26522; color: white; padding: 3px 10px; border-radius: 20px; font-weight: 700; margin-left: 5px;">NUEVO</span>
+                </div>
+                <p style="color: var(--muted-text); margin-bottom: 25px; font-size: 0.9rem;">Gadgets y domótica en TomTop con almacén en España. Comisión 5–10% por venta.</p>
+                <div id="tomtop-offers" class="grid grid-4">
+                    <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:200px;">
+                        <p style="text-align:center;opacity:.5;">Cargando ofertas TomTop...</p>
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:20px;">
+                    <a href="https://www.tomtop.com/search?q=smart+home" target="_blank" rel="nofollow sponsored"
+                       style="display:inline-block;padding:10px 28px;border:1px solid #f26522;color:#f26522;border-radius:8px;font-weight:600;font-size:0.9rem;text-decoration:none;">
+                        Ver más en TomTop →
+                    </a>
+                </div>
             </div>
         </section>
 
@@ -262,24 +430,62 @@
     <script src="/assets/js/main.js"></script>
     <script src="/assets/js/buscador.js"></script>
 
-    <!-- NUEVO MÓDULO UI -->
+    <!-- MÓDULOS UI DE TIENDAS -->
     <script src="/assets/js/banggood-ui.js"></script>
+    <script src="/assets/js/geekbuying-ui.js"></script>
+    <script src="/assets/js/temu-ui.js"></script>
+    <script src="/assets/js/ebay-ui.js"></script>
+    <script src="/assets/js/miravia-ui.js"></script>
+    <script src="/assets/js/cafago-ui.js"></script>
+    <script src="/assets/js/tomtop-ui.js"></script>
 
     <!-- INICIALIZACIÓN -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
 
-            // Cupones
+            // Cupones Banggood
             setTimeout(() => {
                 banggoodUI.loadCoupons('coupons-section');
             }, 800);
 
-            // Ofertas del día
+            // Ofertas del día (Banggood)
             setTimeout(() => {
                 banggoodUI.loadDailyOffers('daily-offers');
             }, 1200);
 
-            console.log('🎯 DomoTechStore - Banggood UI Ready');
+            // Ofertas Geekbuying
+            setTimeout(() => {
+                if (typeof geekbuyingUI !== 'undefined') {
+                    geekbuyingUI.loadDeals('geekbuying-offers');
+                }
+            }, 1600);
+
+            // Ofertas Temu
+            setTimeout(() => {
+                if (typeof temuUI !== 'undefined') temuUI.loadDeals('temu-offers');
+            }, 2000);
+
+            // Ofertas eBay
+            setTimeout(() => {
+                if (typeof ebayUI !== 'undefined') ebayUI.loadDeals('ebay-offers');
+            }, 2400);
+
+            // Ofertas Miravia
+            setTimeout(() => {
+                if (typeof miraviaUI !== 'undefined') miraviaUI.loadDeals('miravia-offers');
+            }, 2800);
+
+            // Ofertas Cafago
+            setTimeout(() => {
+                if (typeof cafagoUI !== 'undefined') cafagoUI.loadDeals('cafago-offers');
+            }, 3200);
+
+            // Ofertas TomTop
+            setTimeout(() => {
+                if (typeof tomtopUI !== 'undefined') tomtopUI.loadDeals('tomtop-offers');
+            }, 3600);
+
+            console.log('🎯 DomoTechStore - 8 tiendas activas y monetizadas');
         });
     </script>
 
