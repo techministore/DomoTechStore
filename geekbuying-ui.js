@@ -1,6 +1,6 @@
 /**
  * DomoTechStore - Geekbuying UI Module
- * ⚡ Módulo seguro: SOLO UI + llamadas al Worker /geekbuying
+ * ⚡ Módulo seguro: SOLO UI + llamadas al Worker /geekbuy
  * ✔ Búsqueda de productos
  * ✔ Ofertas destacadas
  * ✔ Fallback con productos de demostración
@@ -117,7 +117,8 @@ async function searchGeekbuyingProducts(keyword) {
     console.log('[GEEKBUYING] Buscando:', keyword);
 
     try {
-        const url = `/geekbuying?action=search&q=${encodeURIComponent(keyword)}`;
+        // 🔥 CORREGIDO: antes era /geekbuying
+        const url = `/geekbuy?q=${encodeURIComponent(keyword)}`;
         const res = await fetch(url);
         const data = await res.json();
 
@@ -151,7 +152,8 @@ async function loadGeekbuyingDeals(containerId) {
     container.innerHTML = skeletonFn(4);
 
     try {
-        const res = await fetch('/geekbuying?action=deals');
+        // 🔥 CORREGIDO: antes era /geekbuying
+        const res = await fetch('/geekbuy?action=deals');
         const data = await res.json();
 
         let products = [];
